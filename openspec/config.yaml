@@ -1,0 +1,80 @@
+schema: spec-driven
+
+# Project context shown to AI when creating artifacts.
+context: |
+  Project: Starfall Engine — a modular C++20 2D RPG game engine, built CONCURRENTLY
+  with a specific game (games/my_rpg). Inspired by EarthBound, RPG Maker, classic
+  SNES/GBA RPGs. Cross-platform (Windows + Linux), Steam-friendly.
+
+  Two source-of-truth docs:
+    - docs/DesignDoc.md   — engine architecture (read this for engine work)
+    - docs/GameDesign.md  — the specific game (read this for game-content work)
+
+  Milestone contract (DesignDoc §30): every engine milestone produces a visible
+  game improvement; if the game falls behind, engine work pauses. New engine
+  features are justified by game need, not engineering ambition.
+
+  Tech stack:
+    - C++20 (engine, tools, editor)
+    - Lua (gameplay scripting; curated binding surface only)
+    - CMake + CMakePresets.json (Ninja preferred)
+    - SDL2 or SDL3 (window, input, audio)
+    - Dear ImGui (editor UI only)
+    - JSON for scene/asset serialization (versioned); binary/packed later
+    - Catch2 or GoogleTest
+
+  Architecture:
+    - Engine = static libraries: engine_core, engine_math, engine_assets,
+      engine_render, engine_input, engine_audio, engine_scene,
+      engine_scripting, engine_runtime.
+    - Executables: game_my_rpg, engine_editor, asset_packer.
+    - Three-way separation: engine provides capability, game provides behavior
+      (Lua), editor provides tooling (separate exe, not required at runtime).
+
+  Hard rules (enforce in every proposal):
+    - Engine MUST NOT depend on game or editor code.
+    - engine_core MUST NOT depend on render/input/audio/scene/scripting.
+    - Editor MUST NOT be required for the shipped runtime.
+    - Lua MUST NOT mutate engine internals directly — only curated bindings
+      (Entity, Scene, Input, Audio, Dialogue, Time, Math).
+    - Scene data MUST be serializable; every serialized asset MUST include a
+      `version` field.
+    - Game logic belongs in Lua unless there's a strong perf/platform reason.
+
+  Soft rules:
+    - Prefer simple systems before abstractions; no render backend abstraction
+      until a second backend is actually needed.
+    - Build vertical slices — every milestone improves both engine and game.
+    - Prefer readable data formats (JSON) early; pack/optimize later.
+
+  Conventions:
+    - C++20 throughout; namespace per module (Engine::Core, Engine::Render, …).
+    - Modules map 1:1 to CMake targets and to /src subdirectories.
+    - Use Result<T> for recoverable errors; avoid exceptions across module
+      boundaries.
+    - Docs update in the same commit as the system they describe.
+
+# Per-artifact rules
+rules:
+  proposal:
+    - State which engine module(s) are affected and confirm the module
+      dependency rules above are not violated.
+    - Include a "Non-goals" section.
+    - State the visible game improvement this proposal delivers (per DesignDoc
+      §30). If there is no game-visible change, justify why the proposal exists
+      anyway.
+    - For any new serialized format or change to one, specify the version bump
+      and migration plan.
+    - For any new Lua binding, list the exact API surface added and justify why
+      it cannot live purely in script.
+    - For any new engine feature, cite the moment or scene in docs/GameDesign.md
+      that demands it (or explicitly mark it as enabling-infrastructure with no
+      direct game moment, requiring stronger justification).
+  tasks:
+    - Break tasks into chunks of max ~2 hours.
+    - Each task names the CMake target(s) it touches.
+    - Prefer tasks that produce a runnable vertical slice over tasks that only
+      add scaffolding.
+    - Include at least one task that updates the matching row in
+      docs/GameDesign.md §9 (engine milestone → game deliverable) when a
+      milestone completes.
