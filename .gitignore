@@ -1,0 +1,50 @@
+# Build output
+/build/
+/out/
+/cmake-build-*/
+
+# FetchContent / CMake cache
+/_deps/
+**/_deps/
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+
+# IDE
+/.vs/
+/.vscode/
+/.idea/
+/.zed/
+
+# LSP / language server caches (clangd's index, etc.)
+/.cache/
+
+# Per-user Claude Code overrides — keep out of version control.
+/.claude/settings.local.json
+
+# Mirrored from build/<preset>/ by the root CMakeLists for editor LSPs.
+/compile_commands.json
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.vcxproj.user
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.so.*
+*.dylib
+*.a
+*.lib
+*.obj
+*.o
+*.pdb
+*.ilk
+.scratch/
