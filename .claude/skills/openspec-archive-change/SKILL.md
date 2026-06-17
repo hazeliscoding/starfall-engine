@@ -94,6 +94,17 @@ Archive a completed change in the experimental workflow.
    - Whether specs were synced (if applicable)
    - Note about any warnings (incomplete artifacts/tasks)
 
+7. **Suggest next steps for shipping the branch**
+
+   The archive itself is a local file move + sync. To get it into `main`, the user still needs to commit (if any uncommitted spec-sync / archive-move changes exist), push the branch, and open a PR. Print:
+
+   ```
+   Next: commit any remaining changes (`commit` skill), push the branch
+   (`push` skill), then open a PR (`pr` skill).
+   ```
+
+   Skip this step if the current branch is `main`/`master` — in that uncommon case, the archive is happening directly on the trunk and there's no PR to open.
+
 **Output On Success**
 
 ```

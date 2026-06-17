@@ -29,13 +29,32 @@ When ready to implement, run /opsx:apply
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Start from the latest `origin/main` on a new branch**
+
+   Every change ships through its own feature branch and PR — `main` is updated only via merge. Before creating any artifacts:
+
+   ```bash
+   git status --short                   # confirm clean tree (pause + ask if dirty)
+   git fetch origin --prune
+   git checkout main
+   git pull --ff-only origin main       # refuse if main has diverged locally
+   git switch -c "<change-name>"        # branch from up-to-date main
+   ```
+
+   Pause and ask the user how to proceed if any step fails:
+   - **Dirty working tree** → commit/stash first, or abort.
+   - **`git pull --ff-only` rejects** → main has diverged locally; ask before rebasing or resetting.
+   - **Branch already exists** → ask whether to continue on it (`git switch "<change-name>"`) or pick a different name.
+
+   The branch name IS the change name — no `feature/` prefix. This keeps `gh pr list` and `openspec list` aligned.
+
+3. **Create the change directory**
    ```bash
    openspec new change "<name>"
    ```
    This creates a scaffolded change in the planning home resolved by the CLI with `.openspec.yaml`.
 
-3. **Get the artifact build order**
+4. **Get the artifact build order**
    ```bash
    openspec status --change "<name>" --json
    ```
@@ -44,7 +63,7 @@ When ready to implement, run /opsx:apply
    - `artifacts`: list of all artifacts with their status and dependencies
    - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
 
-4. **Create artifacts in sequence until apply-ready**
+5. **Create artifacts in sequence until apply-ready**
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
@@ -76,18 +95,20 @@ When ready to implement, run /opsx:apply
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Show final status**
+6. **Show final status**
    ```bash
    openspec status --change "<name>"
+   git branch --show-current
    ```
 
 **Output**
 
 After completing all artifacts, summarize:
+- Branch name (`git branch --show-current`) and confirm it matches the change name
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `/opsx:apply` to start implementing."
+- Prompt: "Run `/opsx:apply` to start implementing. When the change ships, use the `push` then `pr` skills."
 
 **Artifact Creation Guidelines**
 

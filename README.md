@@ -173,20 +173,27 @@ Violations of rules 1–3 fail CMake configure with a clear message and a `§6.3
 
 ## Spec-Driven Development 📋
 
-Non-trivial changes follow [OpenSpec](https://github.com/Fission-AI/OpenSpec) — proposal, design, capability specs, and tasks live under `openspec/changes/` before any code is written.
+Non-trivial changes follow [OpenSpec](https://github.com/Fission-AI/OpenSpec) — proposal, design, capability specs, and tasks live under `openspec/changes/` before any code is written. **Every change ships on its own branch, lands via PR. `main` is updated only through merge.**
 
 - **Active changes:** `openspec/changes/<change-name>/`
 - **Capability specs:** `openspec/specs/<capability>/spec.md` (synced from changes when archived)
 - **Archive:** `openspec/changes/archive/YYYY-MM-DD-<name>/`
 
-Common commands (run from repo root):
+The full loop (Claude Code skills in **bold**):
 
-```bash
-openspec list                # see what's active / archived
-/opsx:propose <name>         # author a new change (proposal + design + specs + tasks)
-/opsx:apply <name>           # implement the tasks
-/opsx:archive <name>         # finalize after tasks complete
+```text
+1. /opsx:propose <name>   →  branches from latest origin/main as <name>,
+                              writes proposal + design + specs + tasks
+2. /opsx:apply <name>     →  implements tasks, marking each [x] as it lands
+3. **commit**             →  Conventional Commits format, no AI co-author
+4. /opsx:archive <name>   →  syncs delta specs into openspec/specs/, moves
+                              the change to openspec/changes/archive/
+5. **push**               →  pushes the branch (sets upstream on first push)
+6. **pr**                 →  opens a PR via gh CLI, body derived from the
+                              proposal + commits on the branch
 ```
+
+Both `openspec` (CLI) and the `/opsx:*` slash commands work the same way — pick whichever feels natural.
 
 ---
 
