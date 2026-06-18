@@ -1,6 +1,7 @@
 #include "engine/runtime/application.hpp"
 
 #include "engine/assets/asset_loader.hpp"
+#include "engine/audio/audio_system.hpp"
 #include "engine/core/logger.hpp"
 #include "engine/input/action_map.hpp"
 #include "engine/input/input_state.hpp"
@@ -29,8 +30,8 @@ int Application::Run() {
         return 1;
     }
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        SF_LOG_ERROR("Runtime", "SDL_Init(VIDEO) failed: %s", SDL_GetError());
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+        SF_LOG_ERROR("Runtime", "SDL_Init(VIDEO|AUDIO) failed: %s", SDL_GetError());
         return 2;
     }
 
@@ -59,6 +60,10 @@ int Application::Run() {
     auto assetLoader = std::make_unique<Engine::Assets::AssetLoader>(
         renderer->RawHandle());
 
+    auto audio = std::make_unique<Engine::Audio::AudioSystem>();
+    // audio->IsValid() may be false here — that's fine, AudioSystem
+    // degrades to no-op mode and the game runs silent.
+
     auto input = std::make_unique<Engine::Input::InputState>(
         Engine::Input::ActionMap{});
 
@@ -67,14 +72,15 @@ int Application::Run() {
                 config_.windowWidth, config_.windowHeight,
                 config_.logicalWidth, config_.logicalHeight);
 
-    // One-time setup phase (design D11). onStart exception → clean teardown,
+    // One-time setup phase. onStart exception → clean teardown,
     // no frame loop.
     if (config_.onStart) {
         try {
-            config_.onStart(*renderer, *assetLoader);
+            config_.onStart(*renderer, *assetLoader, *audio);
         } catch (const std::exception& e) {
             SF_LOG_ERROR("Runtime", "onStart threw: %s", e.what());
             input.reset();
+            audio.reset();
             assetLoader.reset();
             renderer.reset();
             SDL_DestroyWindow(window);
@@ -137,6 +143,7 @@ int Application::Run() {
 
     // Reverse-construction-order teardown.
     input.reset();
+    audio.reset();
     assetLoader.reset();
     renderer.reset();
     SDL_DestroyWindow(window);

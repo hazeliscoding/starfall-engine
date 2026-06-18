@@ -27,7 +27,9 @@ Defines `engine_runtime`'s application-lifecycle surface and cross-platform wind
 
 ### Requirement: Application Configuration Surface
 
-`AppConfig` SHALL be a plain aggregate carrying the window title, window dimensions, the renderer's logical resolution, the per-frame clear color, an optional `onStart` callback invoked once after subsystem initialization (for one-time setup like loading textures), an optional `onUpdate` callback invoked once per frame for game-state mutation, an optional `onRender` callback the game uses to draw each frame, and (reserved for later milestones) an initial-scene path. Every field MUST have a documented default so omitting it does not crash; in particular, omitting `onStart`, `onUpdate`, or `onRender` is valid and produces a window that clears each frame but draws nothing.
+`AppConfig` SHALL be a plain aggregate carrying the window title, window dimensions, the renderer's logical resolution, the per-frame clear color, an optional `onStart` callback invoked once after subsystem initialization (for one-time setup like loading textures and music), an optional `onUpdate` callback invoked once per frame for game-state mutation, an optional `onRender` callback the game uses to draw each frame, and (reserved for later milestones) an initial-scene path. Every field MUST have a documented default so omitting it does not crash; in particular, omitting `onStart`, `onUpdate`, or `onRender` is valid and produces a window that clears each frame but draws nothing.
+
+The `onStart` callback signature is `void(Engine::Render::Renderer&, Engine::Assets::AssetLoader&, Engine::Audio::AudioSystem&)`. All three references remain valid for the lifetime of `Run()` and are the same references passed to subsequent `onUpdate` / `onRender` calls (via their own captured copies, since `onUpdate` and `onRender` don't take audio/asset arguments directly).
 
 #### Scenario: Title appears on the window
 
@@ -52,12 +54,12 @@ Defines `engine_runtime`'s application-lifecycle surface and cross-platform wind
 #### Scenario: onStart runs once after init, before first frame
 
 - **WHEN** `Configure` is called with an `onStart` callback and `Run()` is invoked
-- **THEN** `onStart(renderer, assetLoader)` MUST be called exactly once after SDL + renderer + asset loader + input state are initialized, and BEFORE the first `onUpdate` and `onRender` invocations; the same `Renderer&` and `AssetLoader&` references are used for `onStart` and every subsequent `onRender`
+- **THEN** `onStart(renderer, assetLoader, audioSystem)` MUST be called exactly once after SDL + renderer + asset loader + input state + audio system are all initialized, and BEFORE the first `onUpdate` and `onRender` invocations
 
 #### Scenario: onStart failure aborts cleanly
 
 - **WHEN** `onStart` throws
-- **THEN** the exception MUST be logged as `[Runtime]` error including its text; SDL + renderer + asset loader + input state MUST be torn down in reverse-construction order; `Run()` MUST return non-zero without entering the frame loop
+- **THEN** the exception MUST be logged as `[Runtime]` error including its text; SDL + renderer + asset loader + input state + audio system MUST be torn down in reverse-construction order; `Run()` MUST return non-zero without entering the frame loop
 
 #### Scenario: onUpdate callback is optional
 
@@ -128,9 +130,9 @@ If subsystem initialization fails (e.g. SDL cannot create a window), `Run()` SHA
 
 ### Requirement: Runtime Owns Only Allowed Engine Modules
 
-`engine_runtime` SHALL link `engine_core`, `engine_render`, `engine_assets`, and `engine_input` (plus the SDL targets they need). Other engine modules (`audio`, `scene`, `scripting`) will be added by the milestones that introduce real implementations.
+`engine_runtime` SHALL link `engine_core`, `engine_render`, `engine_assets`, `engine_input`, and `engine_audio` (plus the SDL targets they need). Other engine modules (`scene`, `scripting`) will be added by the milestones that introduce real implementations.
 
 #### Scenario: Runtime dependencies audited
 
 - **WHEN** a reviewer inspects `engine_runtime`'s CMake `DEPENDS` list
-- **THEN** it lists `engine_core`, `engine_render`, `engine_assets`, `engine_input`, and the SDL targets, and nothing else; no link to `engine_audio`, `engine_scene`, `engine_scripting`, `engine_editor`, or `game_my_rpg`
+- **THEN** it lists `engine_core`, `engine_render`, `engine_assets`, `engine_input`, `engine_audio`, and the SDL targets, and nothing else; no link to `engine_scene`, `engine_scripting`, `engine_editor`, or `game_my_rpg`

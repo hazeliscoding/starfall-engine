@@ -7,5 +7,6 @@ starfall_add_module(
         engine_render
         engine_assets
         engine_input
+        engine_audio
         SDL3::SDL3
 )

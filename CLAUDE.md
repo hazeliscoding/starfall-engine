@@ -70,18 +70,21 @@ This project uses OpenSpec (`/openspec`) for change proposals and specs. When pr
 
 ## Current Status
 
-**M2.5 Sprite Animation: complete on Windows and Linux (2026-06-18).** Inserted between M2 and M3 to close the visible bug where Iden's sprite never changed. `Engine::Render::AnimationClip` (frames + duration + looping) and `Engine::Render::AnimatedSprite` (named-clip state machine with Play/Pause/Resume/Update/CurrentFrame) land in engine_render. Game loads all 12 TimeFantasy frames for chara2_1 (stand/walk1/walk2 × 4 directions), builds 8 named clips (`idle_<dir>`, `walk_<dir>`), and selects per frame from `(isMoving, facing)`. Walk cycle is `[walk1, stand, walk2, stand]` at 8 fps. Graceful single-frame placeholder fallback when the paid pack isn't licensed.
+**M2.75 Audio: complete on Windows and Linux (2026-06-18).** `engine_audio` graduates from placeholder to a working module: `Engine::Audio::AudioSystem` owns a `MIX_Mixer` + one dedicated music track + 16 SFX tracks via SDL3_mixer 3.2.4 (a full API rewrite from SDL2_mixer — `MIX_Mixer/MIX_Track/MIX_Audio` model). `Engine::Audio::Music` / `Engine::Audio::Sound` are `shared_ptr` handle wrappers around `MIX_Audio*`. Volume API: master/music/sfx 0..1 floats applied via `MIX_SetTrackGain`. Init failure degrades silently to no-op mode. `Application::onStart` signature grew a third `AudioSystem&` arg. Game-side: silence at boot, `PlayMusic(fadeIn=2s)` on first movement (proxy for "Iden walks outside her door" until M3 lands real regions), `PlaySound(footstep)` every 16 logical px of travel (~2/sec, matching the M2.5 walk cycle). Theme is the licensed HydroGene "Peaceful Village" track with the procedural WAV placeholder as the public-contributor fallback.
 
-**Test count: 26** (12 new AnimatedSprite tests added on top of M2's 14). Run with `ctest --preset debug-<platform>`.
+**Apply-time deviations**: SDL3 bumped 3.2.16 → 3.4.10 + SDL3_image 3.2.4 → 3.4.4 (ABI alignment with SDL3_mixer 3.2.4). `SDL_X11_XTEST=OFF` added to skip a Linux dep we don't need. Brittle M1-backfill test (`AssetLoader: handle drops free the texture`) rewritten to assert the cache contract via `weak_ptr.expired()` rather than `SDL_Texture*` identity (SDL3 3.4.x's allocator reuses memory addresses).
+
+**Test count: 36** (10 new AudioSystem tests on top of M2.5's 26). Run with `ctest --preset debug-<platform>`.
 
 **Previously complete**:
-- **M2 Input & Movement (2026-06-18)** — ActionMap + InputState + onUpdate callback; 4-dir movement at 60 logical px/sec; Catch2/CTest adopted.
-- **M1 Sprite Rendering (2026-06-17)** — texture-assets + 2d-renderer capabilities; Iden visible on pre-dawn blue background.
-- **M0 Bootstrap (2026-06-17)** — CMake graph + module dependency enforcement; SDL3 window via game_my_rpg→engine_runtime.
+- **M2.5 Sprite Animation (2026-06-18)** — `AnimatedSprite` named-clip state machine in `engine_render`; Iden's 4-directional walk cycle + idle frames via 12 TimeFantasy frames; `[walk1, stand, walk2, stand]` 8 fps.
+- **M2 Input & Movement (2026-06-18)** — `ActionMap` + `InputState` + `onUpdate` callback; 4-dir movement at 60 logical px/sec; Catch2/CTest adopted.
+- **M1 Sprite Rendering (2026-06-17)** — `texture-assets` + `2d-renderer` capabilities; Iden visible on pre-dawn blue.
+- **M0 Bootstrap (2026-06-17)** — CMake graph + module dependency enforcement; SDL3 window via `game_my_rpg → engine_runtime`.
 
-**Next milestone target: M2.75 Audio** (newly inserted into the roadmap on 2026-06-18). Goal: opening 30s of silence; "Embercoast morning" theme fades in when Iden walks outside her door; footstep SFX per step. `engine_audio` graduates from placeholder to a working module. M3 (Tilemap & Collision) follows; M3.5 (Camera Follow) is inserted after M3.
+**Next milestone target: M3 Tilemap & Collision** (per `docs/GameDesign.md` §9). Goal: Embercoast traversable on a hand-coded map; cliff path blocked. M3.5 Camera Follow follows immediately after.
 
-**Roadmap shape**: M0–M10 ships the v1 slice (Embercoast playable). **Phase 2** (M11–M16: UI Framework, Pause + Settings, Map Transitions, Asset Packer, Accessibility, Particles) covers ship-polish work every shipping game needs. **Phase 3** (M17–M22: Inventory, Combat shell + AI, Party, Quests, Cutscenes) covers the systems Acts 2–3 of `my_rpg` need and that any future 2D RPG built on the engine will reuse. Full breakdown in `docs/DesignDoc.md` §22.A.
+**Roadmap shape**: M0–M10 ships the v1 slice (Embercoast playable). **Phase 2** (M11–M16: UI Framework, Pause + Settings, Map Transitions, Asset Packer, Accessibility, Particles) covers ship-polish work every shipping game needs. **Phase 3** (M17–M22: Inventory, Combat shell + AI, Party, Quests, Cutscenes) covers Acts 2–3 systems that any future 2D RPG on the engine will reuse. Full breakdown in `docs/DesignDoc.md` §22.A.
 
 ## Custom Agents
 
