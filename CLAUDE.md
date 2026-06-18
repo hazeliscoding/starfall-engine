@@ -79,7 +79,13 @@ This project uses OpenSpec (`/openspec`) for change proposals and specs. When pr
 - **M1 Sprite Rendering (2026-06-17)** — texture-assets + 2d-renderer capabilities; Iden visible on pre-dawn blue background.
 - **M0 Bootstrap (2026-06-17)** — CMake graph + module dependency enforcement; SDL3 window via game_my_rpg→engine_runtime.
 
-**Next milestone target: M2.75 Audio** (newly inserted into the roadmap on 2026-06-18). Goal: opening 30s of silence; "Embercoast morning" theme fades in when Iden walks outside her door; footstep SFX per step. `engine_audio` graduates from placeholder to a working module. M3 (Tilemap & Collision) follows; M3.5 (Camera Follow) is inserted after M3.
+**M2.75 Audio: complete on Windows and Linux (2026-06-18).** `engine_audio` graduates from placeholder to a working module: `Engine::Audio::AudioSystem` owns a `MIX_Mixer` + one dedicated music track + 16 SFX tracks via SDL3_mixer 3.2.4 (whose API is a full rewrite from SDL2_mixer — `MIX_Mixer/MIX_Track/MIX_Audio` instead of channels). `Engine::Audio::Music` / `Engine::Audio::Sound` are `shared_ptr` handle wrappers around `MIX_Audio*` (same shape as `TextureHandle`). Volume API: master/music/sfx 0..1 floats applied via `MIX_SetTrackGain`. Init failure degrades silently to no-op mode. `Application::onStart` signature grew a third `AudioSystem&` arg.
+
+The game's `onStart` loads a procedurally-generated 30-second ambient `embercoast_morning.wav` + a synthesized `footstep.wav` placeholder. `onUpdate` triggers `PlayMusic(..., fadeIn=2.0f)` on first movement (proxy for "Iden walks outside her door" until M3 lands real regions) and `PlaySound(footstep)` every 16 logical pixels of travel.
+
+**Apply-time deviations worth knowing**: SDL3 bumped 3.2.16 → 3.4.10 + SDL3_image 3.2.4 → 3.4.4 for ABI compatibility with SDL3_mixer 3.2.4. `SDL_X11_XTEST=OFF` added to skip a Linux dep we don't need. Brittle M1-backfill test (`AssetLoader: handle drops free the texture`) rewritten to assert the cache contract via `weak_ptr.expired()` rather than `SDL_Texture*` identity (SDL3 3.4.x's allocator reuses memory addresses).
+
+**Test count: 36** (10 new AudioSystem tests on top of M2.5's 26). Run with `ctest --preset debug-<platform>`.
 
 **Roadmap shape**: M0–M10 ships the v1 slice (Embercoast playable). **Phase 2** (M11–M16: UI Framework, Pause + Settings, Map Transitions, Asset Packer, Accessibility, Particles) covers ship-polish work every shipping game needs. **Phase 3** (M17–M22: Inventory, Combat shell + AI, Party, Quests, Cutscenes) covers the systems Acts 2–3 of `my_rpg` need and that any future 2D RPG built on the engine will reuse. Full breakdown in `docs/DesignDoc.md` §22.A.
 

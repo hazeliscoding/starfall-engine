@@ -23,8 +23,8 @@ The two are bound by the **milestone contract** in `DesignDoc.md` §30: every en
 | M1  Sprite Rendering       | Iden visible on pre-dawn blue.              | ✅ Done 2026-06-17 |
 | M2  Input & Movement       | Iden walks. Feels like Embercoast.          | ✅ Done 2026-06-18 |
 | M2.5 Sprite Animation      | Directional sprite + walk cycle.            | ✅ Done 2026-06-18 |
-| M2.75 Audio                | Music + SFX. Opening silence, then theme.   | 🎯 Next |
-| M3  Tilemap & Collision    | Embercoast traversable. Cliff path blocked. | ⏳ |
+| M2.75 Audio                | Music + SFX. Opening silence, then theme.   | ✅ Done 2026-06-18 |
+| M3  Tilemap & Collision    | Embercoast traversable. Cliff path blocked. | 🎯 Next |
 | M3.5 Camera Follow         | Camera tracks Iden, clamps to map bounds.   | ⏳ |
 | M4  Scene File Format      | `embercoast.scene.json` loadable.           | ⏳ |
 | M5  Editor v1              | Room rearrangeable in editor without code.  | ⏳ |
@@ -49,7 +49,9 @@ Full milestone breakdown: [`docs/DesignDoc.md` §22](docs/DesignDoc.md) (enginee
 
 - **Language:** C++20 (engine, editor, tools) + Lua (gameplay scripting, M6+)
 - **Build:** CMake ≥ 3.24 + `CMakePresets.json` (Ninja preferred)
-- **Window/Input/Audio:** [SDL3](https://github.com/libsdl-org/SDL) 3.2.16 (static, fetched via `external/`)
+- **Window/Input:** [SDL3](https://github.com/libsdl-org/SDL) 3.4.10 (static, fetched via `external/`)
+- **Audio:** [SDL3_mixer](https://github.com/libsdl-org/SDL_mixer) 3.2.4 — Ogg + WAV (static, fetched via `external/`)
+- **Image loading:** [SDL3_image](https://github.com/libsdl-org/SDL_image) 3.4.4 — PNG (static, fetched via `external/`)
 - **Editor UI:** Dear ImGui (lands at M5)
 - **Serialization:** JSON during development; binary/packed later (M14)
 - **Testing:** [Catch2](https://github.com/catchorg/Catch2) v3.7.1 + CTest (adopted at M2)
