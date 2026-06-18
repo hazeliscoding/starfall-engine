@@ -6,6 +6,7 @@
 #include <string>
 
 namespace Engine::Assets { class AssetLoader; }
+namespace Engine::Audio  { class AudioSystem; }
 namespace Engine::Input  { class InputState; }
 namespace Engine::Render { class Renderer; }
 
@@ -29,9 +30,10 @@ struct AppConfig {
     Engine::Math::Color clearColor{0x1A, 0x24, 0x40, 0xFF};
 
     // Called once after subsystem init, before the first frame. Use for
-    // texture loads and other one-time setup. Optional (design D11).
+    // texture/music loads and other one-time setup. Optional.
     std::function<void(Engine::Render::Renderer&,
-                       Engine::Assets::AssetLoader&)> onStart;
+                       Engine::Assets::AssetLoader&,
+                       Engine::Audio::AudioSystem&)> onStart;
 
     // Called every frame before Clear. Use for game-state mutation driven
     // by input. `dt` is wall-clock seconds since the previous frame's start

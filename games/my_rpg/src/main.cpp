@@ -1,4 +1,5 @@
 #include "engine/assets/asset_loader.hpp"
+#include "engine/audio/audio_system.hpp"
 #include "engine/core/logger.hpp"
 #include "engine/input/input_state.hpp"
 #include "engine/math/vec2.hpp"
@@ -11,18 +12,23 @@
 #include <string>
 #include <string_view>
 
-// M2.5 game state: a single player with an AnimatedSprite. Captured by
-// reference into the lambdas below so onStart loads + initializes it,
-// onUpdate drives the animation, and onRender draws the current frame.
+// M2.5 + M2.75 game state: a single player + audio handles. Captured by
+// reference into the lambdas below.
 struct PlayerState {
     Engine::Render::AnimatedSprite sprite;
     Engine::Math::Vec2             position{160.0f, 90.0f};  // logical center
     enum class Direction { Up, Down, Left, Right } facing = Direction::Down;
+
+    // M2.75 audio.
+    Engine::Audio::AudioSystem*   audio = nullptr;  // borrowed; non-owning
+    Engine::Audio::MusicHandle    theme;
+    Engine::Audio::SoundHandle    footstep;
+    bool                          musicTriggered      = false;
+    float                         footstepDistanceAcc = 0.0f;
 };
 
-// Logical pixels per second. 60 px/s * 4x scale = 240 screen px/s.
-// Tunable here (design D8 of input-and-movement).
-constexpr float kIdenWalkSpeed = 60.0f;
+constexpr float kIdenWalkSpeed   = 60.0f;  // M2 default (design D8 of input-and-movement)
+constexpr float kFootstepDistance = 16.0f;  // ~one tile per footstep, ~2/sec at 60 px/s
 
 namespace {
 
@@ -36,23 +42,13 @@ const char* DirectionName(PlayerState::Direction d) noexcept {
     return "down";
 }
 
-// Build the 8 clips needed for 4-direction idle + walk animation from a
-// pre-loaded grid of TimeFantasy frames. Frame order in `frames`:
-//   [0..2]   down  : stand, walk1, walk2
-//   [3..5]   up    : stand, walk1, walk2
-//   [6..8]   left  : stand, walk1, walk2
-//   [9..11]  right : stand, walk1, walk2
-//
-// Walk cycle uses [walk1, stand, walk2, stand] per design D5.
 void BuildClips(Engine::Render::AnimatedSprite& sprite,
                 const std::array<Engine::Assets::TextureHandle, 12>& f) {
     using Engine::Render::AnimationClip;
 
     auto addPair = [&](std::string_view dir, std::size_t base) {
-        // Idle clip = single stand frame.
         sprite.AddClip(std::string{"idle_"} + std::string{dir},
                        AnimationClip{ {f[base]}, 0.125f, true });
-        // Walk clip = [walk1, stand, walk2, stand].
         sprite.AddClip(std::string{"walk_"} + std::string{dir},
                        AnimationClip{ {f[base + 1], f[base], f[base + 2], f[base]}, 0.125f, true });
     };
@@ -63,8 +59,6 @@ void BuildClips(Engine::Render::AnimatedSprite& sprite,
     addPair("right", 9);
 }
 
-// Single-frame fallback clips when the paid TimeFantasy pack isn't
-// available — every clip plays the same placeholder texture (design D7).
 void BuildFallbackClips(Engine::Render::AnimatedSprite& sprite,
                         const Engine::Assets::TextureHandle& placeholder) {
     using Engine::Render::AnimationClip;
@@ -87,9 +81,14 @@ int main(int /*argc*/, char** /*argv*/) {
         .windowHeight = 720,
 
         .onStart = [&player](Engine::Render::Renderer& /*renderer*/,
-                             Engine::Assets::AssetLoader& loader) {
-            // Try loading all 12 TimeFantasy frames for chara2_1.
-            // Order matches BuildClips above.
+                             Engine::Assets::AssetLoader&  loader,
+                             Engine::Audio::AudioSystem&   audio) {
+            // Borrow audio for use from onUpdate (PlayerState holds a non-
+            // owning pointer; AudioSystem outlives onUpdate per the runtime
+            // teardown order).
+            player.audio = &audio;
+
+            // ---- Sprite (M2.5) ----
             static constexpr std::array<const char*, 12> kFramePaths = {
                 "assets/timefantasy_characters/frames/chara/chara2_1/down_stand.png",
                 "assets/timefantasy_characters/frames/chara/chara2_1/down_walk1.png",
@@ -104,7 +103,6 @@ int main(int /*argc*/, char** /*argv*/) {
                 "assets/timefantasy_characters/frames/chara/chara2_1/right_walk1.png",
                 "assets/timefantasy_characters/frames/chara/chara2_1/right_walk2.png",
             };
-
             std::array<Engine::Assets::TextureHandle, 12> frames{};
             bool allLoaded = true;
             for (std::size_t i = 0; i < kFramePaths.size(); ++i) {
@@ -112,7 +110,6 @@ int main(int /*argc*/, char** /*argv*/) {
                 if (r.IsErr()) { allLoaded = false; break; }
                 frames[i] = r.Value();
             }
-
             if (allLoaded) {
                 BuildClips(player.sprite, frames);
             } else {
@@ -125,22 +122,32 @@ int main(int /*argc*/, char** /*argv*/) {
                     BuildFallbackClips(player.sprite, fallback.Value());
                 }
             }
-
-            // Initial state: idle facing down.
             player.sprite.Play("idle_down");
-
-            // Center the player on the actual sprite size.
             if (auto frame = player.sprite.CurrentFrame()) {
                 const float w = static_cast<float>(frame->Width());
                 const float h = static_cast<float>(frame->Height());
                 player.position = {160.0f - w * 0.5f, 90.0f - h * 0.5f};
+            }
+
+            // ---- Audio (M2.75) ----
+            // Per GameDesign §5.2, the opening of the slice has NO music
+            // for the first 30-60 seconds. The first music cue triggers
+            // when the player moves (onUpdate handles the trigger).
+            if (auto m = audio.LoadMusic("assets/audio/embercoast_morning.wav"); m.IsOk()) {
+                player.theme = m.Value();
+            } else {
+                SF_LOG_WARN("Game", "Placeholder music not available; the game will run silent for music.");
+            }
+            if (auto s = audio.LoadSound("assets/audio/footstep.wav"); s.IsOk()) {
+                player.footstep = s.Value();
+            } else {
+                SF_LOG_WARN("Game", "Placeholder footstep SFX not available; movement will be silent.");
             }
         },
 
         .onUpdate = [&player](float dt, Engine::Input::InputState& input) {
             using Dir = PlayerState::Direction;
 
-            // 4-directional, most-recently-pressed wins (same as M2).
             if      (input.IsPressed("MoveUp"))    player.facing = Dir::Up;
             else if (input.IsPressed("MoveDown"))  player.facing = Dir::Down;
             else if (input.IsPressed("MoveLeft"))  player.facing = Dir::Left;
@@ -167,10 +174,8 @@ int main(int /*argc*/, char** /*argv*/) {
                 else if (input.IsHeld("MoveRight")) player.facing = Dir::Right;
             }
 
-            // Apply movement (only when actually moving).
             const float step = kIdenWalkSpeed * dt;
-            const bool isMoving = anyMoveHeld;  // design D6: in M2.5 the two
-                                                // terms agree (no collision yet)
+            const bool isMoving = anyMoveHeld;
             if (isMoving) {
                 switch (player.facing) {
                     case Dir::Up:    player.position.y -= step; break;
@@ -180,14 +185,37 @@ int main(int /*argc*/, char** /*argv*/) {
                 }
             }
 
-            // Drive the animation: pick a clip from (isMoving, facing) and
-            // tick its timer. Play() on the currently-playing clip is a
-            // no-op (design D3) — cycle continuity is preserved across
-            // frames the player keeps walking left.
             const std::string clip =
                 std::string{isMoving ? "walk_" : "idle_"} + DirectionName(player.facing);
             player.sprite.Play(clip);
             player.sprite.Update(dt);
+
+            // ---- M2.75: audio triggers ----
+            if (player.audio != nullptr) {
+                // First movement triggers the music fade-in. Proxy for
+                // "Iden walks outside her door" until M3 lands real
+                // regions and we can ask "did she cross the threshold?"
+                if (!player.musicTriggered && isMoving && player.theme) {
+                    player.audio->PlayMusic(player.theme,
+                                            /*loop*/         true,
+                                            /*fadeIn*/       2.0f,
+                                            /*loopPoint*/    0.0f);
+                    player.musicTriggered = true;
+                }
+
+                // Footstep SFX every kFootstepDistance logical px of travel.
+                if (isMoving && player.footstep) {
+                    player.footstepDistanceAcc += step;
+                    while (player.footstepDistanceAcc >= kFootstepDistance) {
+                        player.footstepDistanceAcc -= kFootstepDistance;
+                        player.audio->PlaySound(player.footstep);
+                    }
+                } else {
+                    // Reset accumulator when stopped — first step after a
+                    // pause shouldn't fire instantly.
+                    player.footstepDistanceAcc = 0.0f;
+                }
+            }
         },
 
         .onRender = [&player](Engine::Render::Renderer& renderer) {
