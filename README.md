@@ -64,14 +64,15 @@ Full milestone breakdown: [`docs/DesignDoc.md` §22](docs/DesignDoc.md) (enginee
 ### Prerequisites
 
 - **Windows:** Visual Studio 2022 or 2026 with the **"Desktop development with C++"** workload (provides CMake + Ninja + MSVC + Windows SDK).
-- **Linux:** cmake ≥ 3.24, ninja, g++-10 (or newer), plus SDL3 build deps:
+- **Linux:** cmake ≥ 3.24, ninja, g++-10 (or newer), plus SDL3 + SDL3_mixer build deps:
   ```bash
   sudo apt install cmake ninja-build g++-10 \
       libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
       libxinerama-dev libxss-dev libxxf86vm-dev libwayland-dev \
       libxkbcommon-dev libegl1-mesa-dev libgl1-mesa-dev \
       libasound2-dev libpulse-dev libdrm-dev libgbm-dev libudev-dev \
-      libdbus-1-dev libibus-1.0-dev pkg-config
+      libdbus-1-dev libibus-1.0-dev pkg-config \
+      libogg-dev libvorbis-dev
   ```
 
 ### ⚠️ Windows: load the VS developer environment first
@@ -108,9 +109,9 @@ cmake --build --preset debug-linux
 ./build/debug-linux/bin/game_my_rpg
 ```
 
-First configure takes a few minutes — SDL3, SDL3_image, and Catch2 are fetched and built from source. Subsequent builds are incremental.
+First configure takes a few minutes — SDL3, SDL3_image, SDL3_mixer, and Catch2 are fetched and built from source. Subsequent builds are incremental.
 
-A window titled **Starfall** should appear with the player sprite visible at logical-center. Press **WASD** or arrow keys to walk; close the window (or send `SIGTERM`) and the process exits cleanly with code 0.
+A window titled **Starfall** opens in silence with the player sprite at logical-center. Press **WASD** or arrow keys to walk — Iden's sprite turns to face the direction of travel and the walk cycle plays. Movement also fades in the Embercoast theme (over ~2 seconds, the first time only) and a footstep SFX fires roughly twice per second. Close the window (or send `SIGTERM`) and the process exits cleanly with code 0.
 
 ### Run the tests
 
