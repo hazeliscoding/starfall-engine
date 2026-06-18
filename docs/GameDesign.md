@@ -370,7 +370,7 @@ Every engine milestone produces a visible game improvement (per
 | Engine Milestone        | Game Deliverable                                                           |
 | ----------------------- | -------------------------------------------------------------------------- |
 | ✅ M0 Bootstrap (2026-06-17) | Window opens on Windows (MSVC) and Linux (WSL2 + WSLg, g++-10). Title bar reads "Starfall." Not "my_rpg." |
-| M1 Sprite Rendering     | Iden's sprite visible. Pre-dawn blue tint applied to the scene.            |
+| ✅ M1 Sprite Rendering (2026-06-17) | Placeholder Iden sprite visible at logical-center. Pre-dawn blue (#1A2440) clear. Verified Windows + Linux (WSL2/WSLg). |
 | M2 Input & Movement     | Iden walks. Movement speed feels like Embercoast, not WASD demo.           |
 | M3 Tilemap & Collision  | Embercoast traversable on a hand-coded map. Cliff path blocked.            |
 | M4 Scene File Format    | `embercoast.scene.json` loadable; replaces the hand-coded version.         |

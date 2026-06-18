@@ -47,3 +47,73 @@ if(NOT TARGET SDL3::SDL3)
             "target was produced. Did the SDL3 release tag change its output names?")
     endif()
 endif()
+
+# ---------------------------------------------------------------------------
+# SDL3_image
+# ---------------------------------------------------------------------------
+# Official SDL companion library for image loading (PNG/JPEG/etc).
+# Pinned to a stable release; bump this one variable to upgrade.
+set(STARFALL_SDL3_IMAGE_GIT_TAG "release-3.2.4" CACHE STRING
+    "SDL3_image release tag to fetch and build")
+
+# SDL3_image's user options use the SDLIMAGE_ prefix (no "3" — yes, it's
+# inconsistent with the library name; check the upstream CMakeLists.txt).
+# Static linking matches SDL3 (one binary for distribution).
+set(SDLIMAGE_SAMPLES         OFF CACHE BOOL "Build SDL3_image samples"          FORCE)
+set(SDLIMAGE_VENDORED        ON  CACHE BOOL "Use SDL3_image's vendored libpng/libjpeg" FORCE)
+set(SDLIMAGE_INSTALL         OFF CACHE BOOL "Generate SDL3_image install rules" FORCE)
+set(SDLIMAGE_BUILD_SHARED_LIBS OFF CACHE BOOL "Build SDL3_image shared"         FORCE)
+# Only enable formats we actually use at M1; turning off the rest trims
+# binary size and configure time. Enable more as milestones need them.
+set(SDLIMAGE_AVIF OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_BMP  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_GIF  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_JPG  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_JXL  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_LBM  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_PCX  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_PNG  ON  CACHE BOOL "" FORCE)
+set(SDLIMAGE_PNM  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_QOI  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_SVG  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_TGA  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_TIF  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_WEBP OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_XCF  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_XPM  OFF CACHE BOOL "" FORCE)
+set(SDLIMAGE_XV   OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    SDL3_image
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
+    GIT_TAG        ${STARFALL_SDL3_IMAGE_GIT_TAG}
+    GIT_SHALLOW    TRUE
+)
+
+# SDL3_image's CMakeLists reads BUILD_SHARED_LIBS to decide which SDL3
+# target name to bind (SDL3::SDL3 vs SDL3::SDL3-shared). Force it OFF for
+# the SDL3_image scope only, save/restore so we don't perturb the rest of
+# the project. Without this, SDL3_image may fail to find SDL3::SDL3-shared
+# (which we don't build) and fall back to find_package(SDL3) — which fails
+# because we don't install SDL3.
+set(_starfall_saved_BSL "${BUILD_SHARED_LIBS}")
+set(BUILD_SHARED_LIBS OFF)
+FetchContent_MakeAvailable(SDL3_image)
+set(BUILD_SHARED_LIBS "${_starfall_saved_BSL}")
+unset(_starfall_saved_BSL)
+
+# Same alias-normalization dance as SDL3.
+if(NOT TARGET SDL3_image::SDL3_image)
+    if(TARGET SDL3_image::SDL3_image-static)
+        add_library(SDL3_image::SDL3_image ALIAS SDL3_image-static)
+    elseif(TARGET SDL3_image-static)
+        add_library(SDL3_image::SDL3_image ALIAS SDL3_image-static)
+    elseif(TARGET SDL3_image)
+        add_library(SDL3_image::SDL3_image ALIAS SDL3_image)
+    else()
+        message(FATAL_ERROR
+            "external: SDL3_image was fetched but no SDL3_image::SDL3_image or "
+            "SDL3_image-static target was produced. Did the release tag change "
+            "its output names?")
+    endif()
+endif()

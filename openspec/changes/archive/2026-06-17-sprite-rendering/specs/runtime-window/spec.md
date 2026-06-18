@@ -1,29 +1,4 @@
-# runtime-window Specification
-
-## Purpose
-
-Defines `engine_runtime`'s application-lifecycle surface and cross-platform windowing behavior. This capability gives the game executable a single, thin entry point (`Engine::Runtime::Application`) that owns SDL initialization, opens a top-level window on Windows and Linux, pumps OS events, and shuts down cleanly — without exposing SDL or platform conditionals to game code.
-
-## Requirements
-
-### Requirement: Application Lifecycle
-
-`engine_runtime` SHALL expose an `Engine::Runtime::Application` type that owns the engine lifecycle: configure → initialize → run loop → shutdown. The game executable SHALL drive the engine ONLY through this surface.
-
-#### Scenario: Configure before run
-
-- **WHEN** game code constructs an `Application`, calls `Configure(AppConfig{...})`, then calls `Run()`
-- **THEN** the application initializes its subsystems, enters the main loop, and returns an integer exit code
-
-#### Scenario: Configure required before run
-
-- **WHEN** game code calls `Run()` without first calling `Configure`
-- **THEN** `Run()` MUST return a non-zero exit code and log a `Core` category error explaining the missing configuration, without attempting to open a window
-
-#### Scenario: Game entry point stays thin
-
-- **WHEN** a reviewer reads `games/my_rpg/src/main.cpp`
-- **THEN** `main` MUST contain only construction of `Application`, a `Configure` call with literal config values, and a `Run` call whose result is returned — no engine loop logic, no SDL calls, no manual subsystem init
+## MODIFIED Requirements
 
 ### Requirement: Application Configuration Surface
 
@@ -59,25 +34,6 @@ Defines `engine_runtime`'s application-lifecycle surface and cross-platform wind
 - **WHEN** `onStart` throws
 - **THEN** the exception MUST be logged as `[Runtime]` error including its text; SDL + renderer + asset loader MUST be torn down in reverse-construction order; `Run()` MUST return non-zero without entering the frame loop
 
-### Requirement: Cross-Platform Window Via SDL
-
-`engine_runtime` SHALL open the application window through SDL (the version chosen in design.md), and `game_my_rpg` SHALL run the same source on Windows and Linux without per-platform conditionals in game code.
-
-#### Scenario: Window opens on Windows
-
-- **WHEN** `game_my_rpg.exe` is launched on Windows 10 or later
-- **THEN** a top-level OS window appears titled "Starfall" within 2 seconds and remains responsive (does not freeze the message pump)
-
-#### Scenario: Window opens on Linux
-
-- **WHEN** `game_my_rpg` is launched on a Linux desktop session (X11 or Wayland — whichever SDL selects)
-- **THEN** a top-level window appears titled "Starfall" within 2 seconds and remains responsive
-
-#### Scenario: Same game source on both platforms
-
-- **WHEN** a reviewer reads `games/my_rpg/src/main.cpp`
-- **THEN** there MUST be no `#ifdef _WIN32` / `#ifdef __linux__` branches; platform handling lives inside `engine_runtime`
-
 ### Requirement: Run Loop Pumps Events And Honors Close
 
 The application's main loop SHALL, per frame: pump OS events, clear the back buffer to `AppConfig::clearColor`, invoke `AppConfig::onRender` (if set) with the renderer, present, and yield to the OS to maintain a reasonable frame budget. It SHALL terminate cleanly when the OS requests window close, returning exit code 0.
@@ -101,15 +57,6 @@ The application's main loop SHALL, per frame: pump OS events, clear the back buf
 
 - **WHEN** `onRender` throws an exception
 - **THEN** the loop catches it, logs an `[Runtime]` error including the exception text, presents the (un-overlaid) cleared frame, and continues running so the user can see the error in the log and close the window normally
-
-### Requirement: Clean Shutdown On Errors
-
-If subsystem initialization fails (e.g. SDL cannot create a window), `Run()` SHALL tear down any partially-initialized subsystems, log a `Runtime` category error describing the failure, and return a non-zero exit code.
-
-#### Scenario: SDL init failure
-
-- **WHEN** SDL initialization fails inside `Run()`
-- **THEN** any SDL subsystems that were initialized MUST be shut down before return, an error MUST be logged with the SDL error message, and `Run()` MUST return non-zero
 
 ### Requirement: Runtime Owns Only Allowed Engine Modules
 

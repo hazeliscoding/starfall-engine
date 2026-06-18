@@ -70,9 +70,9 @@ This project uses OpenSpec (`/openspec`) for change proposals and specs. When pr
 
 ## Current Status
 
-**M0 Bootstrap: complete on Windows and Linux (2026-06-17).** CMake graph for all engine modules, `engine_runtime` opens an SDL3 window from `game_my_rpg` with title "Starfall." `engine_editor` is a stub. SDL3 (3.2.16) is fetched via `external/CMakeLists.txt` (static, Steam-friendly). Module dependency rules from DesignDoc §6.3 are enforced at CMake configure time by `cmake/StarfallModule.cmake`. Linux verified in WSL2 Ubuntu 20.04 + WSLg with g++-10.
+**M1 Sprite Rendering: complete on Windows and Linux (2026-06-17).** The render stack is alive: SDL3_image (release-3.2.4, stb backend, static) loads PNGs through `Engine::Assets::AssetLoader` with a refcounted `TextureHandle` cache; `Engine::Render::Renderer` wraps SDL_Renderer with 320×180 logical-resolution integer-scale presentation and a `Camera2D`. `Engine::Runtime::Application` now owns the renderer + asset loader; `AppConfig` exposes `onStart(Renderer&, AssetLoader&)` and `onRender(Renderer&)` callbacks. `game_my_rpg` loads a procedurally-generated 16×16 Iden placeholder (built by `tools/gen_iden_placeholder.py`) and draws it centered each frame on a `#1A2440` pre-dawn blue background. Asset pipeline: CMake post-build mirrors `games/my_rpg/assets/` → `bin/assets/`; runtime resolves via `SDL_GetBasePath()`.
 
-**Next milestone target: M1 Sprite Rendering** (per `docs/GameDesign.md` §9). Goal: Iden's sprite visible with the pre-dawn blue tint applied.
+**Next milestone target: M2 Input & Movement** (per `docs/GameDesign.md` §9). Goal: Iden walks. Movement should feel like Embercoast, not WASD demo.
 
 ## Custom Agents
 
