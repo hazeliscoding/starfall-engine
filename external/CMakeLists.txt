@@ -117,3 +117,27 @@ if(NOT TARGET SDL3_image::SDL3_image)
             "its output names?")
     endif()
 endif()
+
+# ---------------------------------------------------------------------------
+# Catch2 v3 (test framework, CTest integration)
+# ---------------------------------------------------------------------------
+set(STARFALL_CATCH2_GIT_TAG "v3.7.1" CACHE STRING
+    "Catch2 release tag to fetch and build")
+
+# Static linking; don't build the framework's own self-tests or docs.
+set(CATCH_INSTALL_DOCS    OFF CACHE BOOL "Install Catch2 docs"     FORCE)
+set(CATCH_INSTALL_EXTRAS  OFF CACHE BOOL "Install Catch2 extras"   FORCE)
+set(CATCH_BUILD_TESTING   OFF CACHE BOOL "Build Catch2's own tests" FORCE)
+set(CATCH_BUILD_EXAMPLES  OFF CACHE BOOL "Build Catch2 examples"   FORCE)
+
+FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG        ${STARFALL_CATCH2_GIT_TAG}
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(Catch2)
+
+# Catch2 ships a CMake module with catch_discover_tests; make it findable.
+list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" PARENT_SCOPE)
