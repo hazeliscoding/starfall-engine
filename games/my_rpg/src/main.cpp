@@ -133,10 +133,30 @@ int main(int /*argc*/, char** /*argv*/) {
             // Per GameDesign §5.2, the opening of the slice has NO music
             // for the first 30-60 seconds. The first music cue triggers
             // when the player moves (onUpdate handles the trigger).
-            if (auto m = audio.LoadMusic("assets/audio/embercoast_morning.wav"); m.IsOk()) {
+            //
+            // Theme: try the licensed HydroGene "Peaceful Village" track
+            // first (matches Embercoast's quiet coastal morning vibe). If
+            // the pack isn't present (public contributor), fall back to
+            // the procedural placeholder WAV.
+            //
+            // To swap tracks: replace the path below. Other on-genre
+            // candidates from the same pack:
+            //   - "08. Wood Forest Town.ogg"
+            //   - "17. Unknown Island.ogg" (coastal mystery)
+            //   - "18. The Old Magician.ogg" (weathered/mysterious)
+            constexpr const char* kThemeLicensed =
+                "assets/28 High Quality 16-bit RPG Music/ogg/04. Peaceful Village.ogg";
+            constexpr const char* kThemePlaceholder = "assets/audio/embercoast_morning.wav";
+
+            if (auto m = audio.LoadMusic(kThemeLicensed); m.IsOk()) {
                 player.theme = m.Value();
+            } else if (auto m2 = audio.LoadMusic(kThemePlaceholder); m2.IsOk()) {
+                SF_LOG_WARN("Game",
+                    "Licensed music pack not available, using procedural placeholder. "
+                    "(IGNORE this warning if you haven't licensed the HydroGene pack.)");
+                player.theme = m2.Value();
             } else {
-                SF_LOG_WARN("Game", "Placeholder music not available; the game will run silent for music.");
+                SF_LOG_WARN("Game", "No music available; the game will run silent for music.");
             }
             if (auto s = audio.LoadSound("assets/audio/footstep.wav"); s.IsOk()) {
                 player.footstep = s.Value();
