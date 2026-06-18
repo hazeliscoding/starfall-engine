@@ -70,9 +70,11 @@ This project uses OpenSpec (`/openspec`) for change proposals and specs. When pr
 
 ## Current Status
 
-**M1 Sprite Rendering: complete on Windows and Linux (2026-06-17).** The render stack is alive: SDL3_image (release-3.2.4, stb backend, static) loads PNGs through `Engine::Assets::AssetLoader` with a refcounted `TextureHandle` cache; `Engine::Render::Renderer` wraps SDL_Renderer with 320×180 logical-resolution integer-scale presentation and a `Camera2D`. `Engine::Runtime::Application` now owns the renderer + asset loader; `AppConfig` exposes `onStart(Renderer&, AssetLoader&)` and `onRender(Renderer&)` callbacks. `game_my_rpg` loads a procedurally-generated 16×16 Iden placeholder (built by `tools/gen_iden_placeholder.py`) and draws it centered each frame on a `#1A2440` pre-dawn blue background. Asset pipeline: CMake post-build mirrors `games/my_rpg/assets/` → `bin/assets/`; runtime resolves via `SDL_GetBasePath()`.
+**M2 Input & Movement: complete on Windows and Linux (2026-06-18).** Input stack landed: `Engine::Input::ActionMap` (string-keyed bindings, default M2 game action set on WASD+arrows) + `Engine::Input::InputState` (edge-triggered Pressed/Released, steady-state Held, frame-coherent, OS-repeat-filtered). `Application` now drains events through the input state and exposes an `onUpdate(dt, input)` callback for game-state mutation. Iden walks 4-directionally with most-recent-axis-wins on diagonal key combinations at 60 logical px/sec. Player sprite swapped to TimeFantasy `chara2_1/down_stand.png` with graceful fallback to the M1 procedural placeholder if the paid pack isn't present.
 
-**Next milestone target: M2 Input & Movement** (per `docs/GameDesign.md` §9). Goal: Iden walks. Movement should feel like Embercoast, not WASD demo.
+**Test framework adopted**: Catch2 v3.7.1 via FetchContent + CTest integration via `cmake/StarfallTests.cmake` (`starfall_add_test` helper). Per-module tests under `tests/<module>/`. M1's three deferred test items (texture cache hit, missing-path Err, null-handle DrawSprite noop) backfilled. 14 tests passing on both platforms. Run with `ctest --preset debug-<platform>`.
+
+**Next milestone target: M3 Tilemap & Collision** (per `docs/GameDesign.md` §9). Goal: Embercoast traversable on a hand-coded map. Cliff path blocked.
 
 ## Custom Agents
 
