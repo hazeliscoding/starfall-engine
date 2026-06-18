@@ -45,20 +45,34 @@ TEST_CASE("AssetLoader: missing path returns Err with the path",
     CHECK(msg.find("does/not/exist.png") != std::string::npos);
 }
 
-TEST_CASE("AssetLoader: handle drops free the texture", "[assets][asset_loader]") {
+TEST_CASE("AssetLoader: handle drops free the texture, re-load succeeds",
+          "[assets][asset_loader]") {
     SdlWindowAndRendererFixture sdl;
     AssetLoader loader{sdl.Renderer()};
 
-    SDL_Texture* rawBeforeDrop = nullptr;
+    // Earlier draft of this test asserted that the SDL_Texture* after a
+    // re-load differed from the one before the handle drop. That's
+    // brittle — SDL's allocator can reuse the same memory address for a
+    // freshly-created texture (verified on SDL3 3.4.10 / Linux). The
+    // contract is "after all handles drop, the cache entry expires and
+    // the next load re-decodes" — best verified by the two REQUIRE
+    // calls succeeding on either side of the scope.
+
+    std::weak_ptr<Engine::Assets::Texture> weak;
+
     {
         auto handle = loader.LoadTexture("assets/characters/iden_placeholder.png");
         REQUIRE(handle.IsOk());
-        rawBeforeDrop = handle.Value()->RawHandle();
-    }  // handle dropped here
+        weak = handle.Value();
+        // shared_ptr is alive in `weak` via the handle.
+        CHECK_FALSE(weak.expired());
+    }  // handle dropped — last strong ref gone
 
-    // After the handle drops, a re-load is a fresh decode — different
-    // SDL_Texture* (the old one was freed by Texture's destructor).
+    // Cache held a weak_ptr, so the weak reference must now be expired.
+    CHECK(weak.expired());
+
+    // Re-load succeeds (proves the cache cleanup path didn't leave a
+    // broken entry around).
     auto reloaded = loader.LoadTexture("assets/characters/iden_placeholder.png");
     REQUIRE(reloaded.IsOk());
-    CHECK(reloaded.Value()->RawHandle() != rawBeforeDrop);
 }
