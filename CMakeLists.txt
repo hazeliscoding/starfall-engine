@@ -43,6 +43,7 @@ option(STARFALL_RUN_CMAKE_SELFTESTS
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(StarfallModule)
+include(CTest)  # Brings BUILD_TESTING option; enable_testing() called by it.
 
 # Mirror compile_commands.json to the repo root so editors (Zed/clangd, VS Code
 # C/C++ extension, etc.) find it without having to be told the build dir.
@@ -94,3 +95,12 @@ add_subdirectory(src/runtime)
 # ---------------------------------------------------------------------------
 add_subdirectory(src/editor)
 add_subdirectory(games/my_rpg)
+
+# ---------------------------------------------------------------------------
+# Tests (Catch2 + CTest). StarfallTests pulls in Catch's CMake helpers, so
+# it can only be included AFTER external/CMakeLists.txt has fetched Catch2.
+# ---------------------------------------------------------------------------
+if(BUILD_TESTING)
+    include(StarfallTests)
+    add_subdirectory(tests)
+endif()

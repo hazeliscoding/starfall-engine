@@ -94,9 +94,21 @@ cmake --build --preset debug-linux
 ./build/debug-linux/bin/game_my_rpg
 ```
 
-First configure takes a few minutes — SDL3 is fetched and built from source. Subsequent builds are incremental.
+First configure takes a few minutes — SDL3, SDL3_image, and Catch2 are fetched and built from source. Subsequent builds are incremental.
 
-A window titled **Starfall** should appear. Close it (or send `SIGTERM`) and the process exits cleanly with code 0.
+A window titled **Starfall** should appear with the player sprite visible at logical-center. Press **WASD** or arrow keys to walk; close the window (or send `SIGTERM`) and the process exits cleanly with code 0.
+
+### Run the tests
+
+```powershell
+# Windows (inside a VS dev shell)
+ctest --preset debug-windows
+```
+
+```bash
+# Linux
+ctest --preset debug-linux
+```
 
 ### Available presets
 

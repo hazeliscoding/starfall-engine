@@ -1,5 +1,9 @@
 starfall_add_module(
     NAME engine_input
-    SOURCES placeholder.cpp
-    DEPENDS engine_core
+    SOURCES
+        action_map.cpp
+        input_state.cpp
+    DEPENDS
+        engine_core
+        SDL3::SDL3
 )
