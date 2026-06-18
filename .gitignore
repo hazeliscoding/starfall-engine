@@ -48,3 +48,12 @@ Thumbs.db
 *.pdb
 *.ilk
 .scratch/
+
+# ---------------------------------------------------------------------------
+# Paid / licensed art assets — local-only, never committed.
+# Each entry here is one pack the developer has licensed for use in builds.
+# The runtime + asset-mirror pipeline will use them locally, but they MUST
+# NOT end up in the public repo.
+# ---------------------------------------------------------------------------
+/games/my_rpg/assets/timefantasy_characters/
+/games/my_rpg/assets/TimeFantasy_TILES_6.24.17/
