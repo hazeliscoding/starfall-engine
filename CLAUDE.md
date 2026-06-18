@@ -70,9 +70,14 @@ This project uses OpenSpec (`/openspec`) for change proposals and specs. When pr
 
 ## Current Status
 
-**M2 Input & Movement: complete on Windows and Linux (2026-06-18).** Input stack landed: `Engine::Input::ActionMap` (string-keyed bindings, default M2 game action set on WASD+arrows) + `Engine::Input::InputState` (edge-triggered Pressed/Released, steady-state Held, frame-coherent, OS-repeat-filtered). `Application` now drains events through the input state and exposes an `onUpdate(dt, input)` callback for game-state mutation. Iden walks 4-directionally with most-recent-axis-wins on diagonal key combinations at 60 logical px/sec. Player sprite swapped to TimeFantasy `chara2_1/down_stand.png` with graceful fallback to the M1 procedural placeholder if the paid pack isn't present.
+**M2.5 Sprite Animation: complete on Windows and Linux (2026-06-18).** Inserted between M2 and M3 to close the visible bug where Iden's sprite never changed. `Engine::Render::AnimationClip` (frames + duration + looping) and `Engine::Render::AnimatedSprite` (named-clip state machine with Play/Pause/Resume/Update/CurrentFrame) land in engine_render. Game loads all 12 TimeFantasy frames for chara2_1 (stand/walk1/walk2 × 4 directions), builds 8 named clips (`idle_<dir>`, `walk_<dir>`), and selects per frame from `(isMoving, facing)`. Walk cycle is `[walk1, stand, walk2, stand]` at 8 fps. Graceful single-frame placeholder fallback when the paid pack isn't licensed.
 
-**Test framework adopted**: Catch2 v3.7.1 via FetchContent + CTest integration via `cmake/StarfallTests.cmake` (`starfall_add_test` helper). Per-module tests under `tests/<module>/`. M1's three deferred test items (texture cache hit, missing-path Err, null-handle DrawSprite noop) backfilled. 14 tests passing on both platforms. Run with `ctest --preset debug-<platform>`.
+**Test count: 26** (12 new AnimatedSprite tests added on top of M2's 14). Run with `ctest --preset debug-<platform>`.
+
+**Previously complete**:
+- **M2 Input & Movement (2026-06-18)** — ActionMap + InputState + onUpdate callback; 4-dir movement at 60 logical px/sec; Catch2/CTest adopted.
+- **M1 Sprite Rendering (2026-06-17)** — texture-assets + 2d-renderer capabilities; Iden visible on pre-dawn blue background.
+- **M0 Bootstrap (2026-06-17)** — CMake graph + module dependency enforcement; SDL3 window via game_my_rpg→engine_runtime.
 
 **Next milestone target: M3 Tilemap & Collision** (per `docs/GameDesign.md` §9). Goal: Embercoast traversable on a hand-coded map. Cliff path blocked.
 
