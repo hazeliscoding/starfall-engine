@@ -1611,6 +1611,30 @@ Player moves around with keyboard.
 
 ---
 
+### Milestone 2.5 — Sprite Animation
+
+Inserted after M2 shipped revealed that a static down-facing sprite while
+walking in any direction reads as broken. Closes the gap before tilemap
+work begins. Numbering stops at 2.5 — M3–M10 are unchanged.
+
+Goals:
+
+* Standalone `AnimatedSprite` primitive in `engine_render` (named clips,
+  frame-duration-driven Update, looping vs one-shot, Play/Pause/Resume)
+* Directional sprite swap (4 cardinal facings)
+* Walk-cycle animation (3 frames per direction, ~8 fps)
+* `AnimatedSpriteComponent` (DesignDoc §7.7) wraps the same primitive
+  when the scene system lands
+
+Deliverable:
+
+```text
+Iden faces the direction of travel. Walk cycle plays while moving,
+idle frame when standing.
+```
+
+---
+
 ### Milestone 3 — Tilemap and Collision
 
 Goals:
