@@ -81,13 +81,15 @@ The TimeFantasy character-sprite swap and the M1 deferred-test backfill are real
 
 **Alternative considered:** Make the engine resolve. Rejected — too opinionated, foreclosing future games.
 
-### D7: TimeFantasy sprite via `DrawSprite` source rect
+### D7: TimeFantasy sprite via per-frame PNG (sheet pivot, see below)
 
-**Choice:** `onStart` loads `assets/timefantasy_characters/sheets/chara2.png` once. `onRender` calls `DrawSprite(idenSheet, position, sourceRect)` where `sourceRect` selects the down-facing middle (idle) frame of Iden's slot on the sheet. The `sourceRect` is the first real use of M1's optional source-rect parameter.
+**Original choice:** Use `sheets/chara2.png` with a `DrawSprite` source-rect to crop Iden's idle frame.
 
-**Why:** Sheets are the standard distribution format for character sprite packs; cropping out the desired frame is what the source-rect was designed for. No new render API needed.
+**Apply-time pivot:** The "sheets" in this pack are the artist's reference sheets — frames are 17×31 with non-uniform padding, not a clean programmatic grid. The `frames/` subtree ships each pose as its own standalone PNG (e.g. `frames/chara/chara2_1/down_stand.png`). Use those directly. No source-rect; the file IS the frame.
 
-**Frame-size assumption:** TimeFantasy character sheets are 16×16 frames laid out 3 columns × 4 rows per character, with multiple characters per sheet. Verified at apply time by inspecting `chara2.png` dimensions. If the actual layout differs, the source-rect constants change but the architecture doesn't.
+**Net effect:** Iden loads from `assets/timefantasy_characters/frames/chara/chara2_1/down_stand.png` (chara2 slot 1, down-facing, idle pose — a specific RPG character). M1's procedural placeholder remains the fallback when the paid pack isn't present.
+
+**Why pivot:** Cleaner than reverse-engineering the artist's sheet layout. The `DrawSprite` source-rect parameter still lives in the engine API (already in M1's spec), but M2's game code doesn't need to exercise it — tilemap rendering at M3 will be the first real customer.
 
 ### D8: Movement speed = `60.0f` logical px/sec, defined in `games/my_rpg/src/main.cpp`
 
