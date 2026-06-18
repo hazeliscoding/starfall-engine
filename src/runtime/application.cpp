@@ -2,6 +2,8 @@
 
 #include "engine/assets/asset_loader.hpp"
 #include "engine/core/logger.hpp"
+#include "engine/input/action_map.hpp"
+#include "engine/input/input_state.hpp"
 #include "engine/render/renderer.hpp"
 
 #include <SDL3/SDL.h>
@@ -57,18 +59,22 @@ int Application::Run() {
     auto assetLoader = std::make_unique<Engine::Assets::AssetLoader>(
         renderer->RawHandle());
 
+    auto input = std::make_unique<Engine::Input::InputState>(
+        Engine::Input::ActionMap{});
+
     SF_LOG_INFO("Runtime", "Window opened: \"%s\" (%dx%d, logical %dx%d)",
                 config_.title.c_str(),
                 config_.windowWidth, config_.windowHeight,
                 config_.logicalWidth, config_.logicalHeight);
 
-    // One-time setup phase (design D11). If onStart throws, abort cleanly
-    // without entering the frame loop.
+    // One-time setup phase (design D11). onStart exception → clean teardown,
+    // no frame loop.
     if (config_.onStart) {
         try {
             config_.onStart(*renderer, *assetLoader);
         } catch (const std::exception& e) {
             SF_LOG_ERROR("Runtime", "onStart threw: %s", e.what());
+            input.reset();
             assetLoader.reset();
             renderer.reset();
             SDL_DestroyWindow(window);
@@ -78,25 +84,51 @@ int Application::Run() {
     }
 
     bool running = true;
+    Uint64 prevTicks = 0;  // 0 = first-frame sentinel
+    const Uint64 perfFreq = SDL_GetPerformanceFrequency();
+
     while (running) {
-        // Drain all pending events (close, resize, etc.). Frame pacing is
-        // implicit via vsync inside SDL_RenderPresent.
+        // ---------------- Frame begin ----------------
+        const Uint64 nowTicks = SDL_GetPerformanceCounter();
+        const float dt = (prevTicks == 0)
+            ? 0.0f
+            : static_cast<float>(static_cast<double>(nowTicks - prevTicks) /
+                                 static_cast<double>(perfFreq));
+        prevTicks = nowTicks;
+
+        input->BeginFrame();
+
+        // Drain OS events: route input to input_state, watch for close.
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
                 running = false;
             }
+            // Pass every event through input — it filters to keyboard events
+            // internally and ignores the rest.
+            input->OnEvent(event);
         }
         if (!running) break;
 
+        // ---------------- Update ----------------
+        bool updateThrew = false;
+        if (config_.onUpdate) {
+            try {
+                config_.onUpdate(dt, *input);
+            } catch (const std::exception& e) {
+                SF_LOG_ERROR("Runtime", "onUpdate threw: %s", e.what());
+                updateThrew = true;
+            }
+        }
+
+        // ---------------- Render ----------------
         renderer->Clear(config_.clearColor);
 
-        if (config_.onRender) {
+        if (!updateThrew && config_.onRender) {
             try {
                 config_.onRender(*renderer);
             } catch (const std::exception& e) {
                 SF_LOG_ERROR("Runtime", "onRender threw: %s", e.what());
-                // Frame continues; user can see the log and close normally.
             }
         }
 
@@ -104,6 +136,7 @@ int Application::Run() {
     }
 
     // Reverse-construction-order teardown.
+    input.reset();
     assetLoader.reset();
     renderer.reset();
     SDL_DestroyWindow(window);

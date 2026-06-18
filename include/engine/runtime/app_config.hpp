@@ -6,6 +6,7 @@
 #include <string>
 
 namespace Engine::Assets { class AssetLoader; }
+namespace Engine::Input  { class InputState; }
 namespace Engine::Render { class Renderer; }
 
 namespace Engine::Runtime {
@@ -31,6 +32,12 @@ struct AppConfig {
     // texture loads and other one-time setup. Optional (design D11).
     std::function<void(Engine::Render::Renderer&,
                        Engine::Assets::AssetLoader&)> onStart;
+
+    // Called every frame before Clear. Use for game-state mutation driven
+    // by input. `dt` is wall-clock seconds since the previous frame's start
+    // (0 on the first frame). Optional.
+    std::function<void(float dt,
+                       Engine::Input::InputState&)>   onUpdate;
 
     // Called every frame between Clear and Present. Optional.
     std::function<void(Engine::Render::Renderer&)>    onRender;
