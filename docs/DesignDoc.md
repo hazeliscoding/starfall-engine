@@ -1635,6 +1635,41 @@ idle frame when standing.
 
 ---
 
+### Milestone 2.75 — Audio
+
+Inserted before M3 because `engine_audio` is still a placeholder and
+`GameDesign.md` §5.2 designs around audio explicitly: acoustic chiptune
+over deliberate silence, with the first music cue triggered when the
+player steps outside their door. That moment is impossible without an
+audio system. Numbering uses 2.75 to slot between M2.5 and M3 without
+renumbering downstream.
+
+Goals:
+
+* Music streaming (Ogg Vorbis) — load, play, stop, pause/resume, fade
+  in/out, looping at a configurable loop point
+* SFX one-shots (WAV) — load + cached playback, simple polyphony
+* Master + music + SFX volume controls
+* SDL3 audio backend, abstracted enough that swapping to miniaudio or
+  Steam Audio later is not a rewrite
+
+Non-goals (deferred to later milestones):
+
+* No multi-bus DSP graph, no reverb/EQ
+* No spatial audio (the game is top-down 2D)
+* No procedural audio
+* No Lua bindings yet — that lands in the M6 binding pass
+
+Deliverable:
+
+```text
+The game starts in silence for ~30 seconds. When Iden walks outside
+her door, the "Embercoast morning" theme fades in. A footstep SFX
+plays on each step.
+```
+
+---
+
 ### Milestone 3 — Tilemap and Collision
 
 Goals:
@@ -1648,6 +1683,28 @@ Deliverable:
 
 ```text
 Player walks around a small map and collides with walls.
+```
+
+---
+
+### Milestone 3.5 — Camera Follow
+
+Inserted after M3 because the moment Embercoast becomes bigger than the
+320×180 logical surface, Iden walks off-screen instantly without a
+camera that tracks her. Small slot, small scope.
+
+Goals:
+
+* `Camera2D` follow target (Iden's `position`)
+* Smoothing (a few frames of lerp, not instant)
+* Clamp to map bounds so the camera doesn't pan past the edge of the
+  tilemap and reveal the clear color
+
+Deliverable:
+
+```text
+Iden walks the full Embercoast map. Camera follows her, never shows
+empty space past the map edge.
 ```
 
 ---
@@ -1766,6 +1823,90 @@ Deliverable:
 ```text
 Game is ready for Steamworks onboarding and store packaging.
 ```
+
+---
+
+## 22.A Extended Roadmap (Phase 2 — Ship Polish, Phase 3 — Game Expansion)
+
+M0–M10 produce a *shippable v1 slice* of the specific game in
+`docs/GameDesign.md`. They do **not** cover everything a serious 2D RPG
+engine needs in order to ship a high-quality indie title — many systems
+are correctly out of scope for v1 (which is intentionally a vertical
+slice, not a full game) but become required as Acts 2–3 expand the game
+or as the engine gets used for any second title.
+
+The post-MVP roadmap below is **not** strictly sequential — milestones
+are grouped by purpose and reordered as playtests + game-direction
+needs reshuffle priorities. Each one still inherits the §30 contract
+(every milestone produces a visible game improvement).
+
+### Phase 2 — Ship Polish (after M10)
+
+Things every shipping game needs that v1's narrow slice doesn't yet.
+
+* **M11 UI Framework.** A real menu/HUD primitive (panel, button,
+  label, focus navigation). M7 builds a one-off dialogue box; M11
+  generalizes. Required before settings, save UI, inventory screens.
+* **M12 Pause + Settings Menu.** Pause-on-Esc, volume sliders (music /
+  SFX / master), key remap, fullscreen toggle, return-to-title. Builds
+  on M11.
+* **M13 Map Transitions.** Fade out → load new map → fade in, with
+  player state preserved across the boundary. Required as soon as the
+  game has more than one map (Act 2 onward).
+* **M14 Asset Packer.** DesignDoc §17's `asset_packer` tool: validates
+  + packs assets into a versioned archive, generates a manifest. Lets
+  the shipped binary load from one file instead of a sprawling
+  directory tree.
+* **M15 Accessibility Pass.** Key remap (extends M12), font size
+  toggle, optional dialogue SFX subtitles, color-blind-friendly palette
+  swap, hold-to-confirm option for controllers.
+* **M16 Particle / Juice System.** Footstep dust, save-confirmation
+  sparkle, dialogue typewriter cursor blink, hit flashes (for combat).
+  Disproportionately large impact on perceived quality.
+
+### Phase 3 — Game Expansion (Acts 2–3)
+
+Systems the actual `my_rpg` game needs once it grows past the v1 slice.
+Each is a milestone *for the engine*; the game-side scope is owned by
+the Game Director.
+
+* **M17 Inventory + Item Registry.** Item definitions (data-driven via
+  JSON), inventory storage on the player + party members, item-use
+  hooks for Lua.
+* **M18 Combat Shell (Part 1).** Turn-based combat scene: encounter
+  trigger, turn order, action menu, damage application, victory/defeat
+  flow. Visible-encounters per GameDesign §1.3 Chrono Trigger
+  reference. No enemy AI sophistication yet.
+* **M19 Combat AI + Balance Hooks (Part 2).** Enemy behavior trees,
+  status effects, escape mechanic, designer-facing tuning knobs.
+* **M20 Party / Companion System.** Multi-character party (max 4 per
+  Act 2), per-companion stats, follower movement, party menu.
+* **M21 Quest / Event Flag System.** Beyond M8's save flags: a typed
+  event registry, quest state machine, condition predicates Lua can
+  evaluate. GameDesign §10's "echo" mechanic (NPC lines that change
+  between visits) is the first customer.
+* **M22 Cutscene / Scripted Event System.** Sequenced events with
+  camera moves, timed dialogue, NPC pathing, fade/flash effects. The
+  cliff-path-to-sunrise moment in GameDesign §5.1 is the first real
+  customer.
+
+### Continuously alongside the above
+
+Not milestones per se — work that happens during the milestones it
+becomes necessary for:
+
+* **Localization scaffolding.** Even shipping English-only v1, every
+  user-visible string should go through a `Loc("key.path")` lookup
+  rather than a literal — keeps future translation cheap.
+* **Achievements + cloud saves** (Steamworks). Lands during/after M10
+  whenever the Steamworks integration matures.
+* **Animation state machines.** `AnimatedSprite` (M2.5) plays one clip;
+  a real shipping animation system adds transitions, blending, multi-
+  track (sprite + emotion overlay). Likely M16 or alongside combat
+  animations at M18.
+* **Crash reporting.** A tiny "write last-N log lines + a stack trace
+  to `<save-dir>/crash-<timestamp>.log` on terminate" hook. Lands
+  whenever the first shipping bug requires it.
 
 ---
 

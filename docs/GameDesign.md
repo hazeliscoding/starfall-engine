@@ -373,7 +373,9 @@ Every engine milestone produces a visible game improvement (per
 | ✅ M1 Sprite Rendering (2026-06-17) | Placeholder Iden sprite visible at logical-center. Pre-dawn blue (#1A2440) clear. Verified Windows + Linux (WSL2/WSLg). |
 | ✅ M2 Input & Movement (2026-06-18) | Iden walks 4-directionally on WASD/arrows with most-recent-axis-wins resolution. TimeFantasy chara2 slot 1 (with placeholder fallback). 60 logical px/s default. Verified Windows + Linux. |
 | ✅ M2.5 Sprite Animation (2026-06-18) | Iden faces direction of travel via 4-directional sprite swap. Walk cycle (`[walk1, stand, walk2, stand]`, 8 fps) plays when moving; idle stand frame when standing. AnimatedSprite primitive added to engine_render. Verified Windows + Linux (26/26 tests pass). |
+| M2.75 Audio             | Opening 30s of silence. When Iden walks outside her door, "Embercoast morning" theme fades in. Footstep SFX on each step. |
 | M3 Tilemap & Collision  | Embercoast traversable on a hand-coded map. Cliff path blocked.            |
+| M3.5 Camera Follow      | Iden walks the full Embercoast map. Camera follows, clamps to map bounds.  |
 | M4 Scene File Format    | `embercoast.scene.json` loadable; replaces the hand-coded version.         |
 | M5 Editor v1            | The room can be rearranged in the editor without code.                     |
 | M6 Lua Scripting        | Mina exists as a `ScriptComponent`. She says her first line.               |
@@ -383,6 +385,16 @@ Every engine milestone produces a visible game improvement (per
 | M10 Steam Prep          | Controller support. Slice ready for a store-page draft.                    |
 
 If a game deliverable falls behind, engine work *pauses* until it catches up.
+
+### Beyond v1 — Phase 2 (Ship Polish) and Phase 3 (Acts 2–3)
+
+The v1 slice ships at M10. Acts 2–3 + general engine polish are tracked
+under **Phase 2** (M11 UI Framework, M12 Pause + Settings, M13 Map
+Transitions, M14 Asset Packer, M15 Accessibility, M16 Particles) and
+**Phase 3** (M17 Inventory, M18–M19 Combat, M20 Party, M21 Quests, M22
+Cutscenes). Game-deliverable mappings for each are owned by the Game
+Director and filled in as those milestones come into focus. Full
+breakdown lives in `docs/DesignDoc.md` §22.A.
 
 ---
 

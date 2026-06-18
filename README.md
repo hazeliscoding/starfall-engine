@@ -15,21 +15,33 @@ The two are bound by the **milestone contract** in `DesignDoc.md` §30: every en
 
 ## Status
 
+### v1 Slice (Embercoast playable)
+
 | Milestone | Game Deliverable | State |
 |-----------|------------------|-------|
-| M0 Bootstrap            | Window opens. Title bar reads "Starfall." | ✅ Done (2026-06-17, Windows + Linux) |
-| M1 Sprite Rendering     | Iden's sprite visible. Pre-dawn blue tint. | 🎯 Next |
-| M2 Input & Movement     | Iden walks. Feels like Embercoast.         | ⏳ |
-| M3 Tilemap & Collision  | Embercoast traversable on a hand-coded map. | ⏳ |
-| M4 Scene File Format    | `embercoast.scene.json` loadable.          | ⏳ |
-| M5 Editor v1            | Room rearrangeable in editor without code. | ⏳ |
-| M6 Lua Scripting        | Mina exists as a `ScriptComponent`.        | ⏳ |
-| M7 Dialogue             | All three NPCs playable. End-to-end slice. | ⏳ |
-| M8 Save System          | Salt Light cairn save point works.         | ⏳ |
-| M9 Packaging            | A friend downloads and plays.              | ⏳ |
-| M10 Steam Prep          | Controller support. Store-page draft ready.| ⏳ |
+| M0  Bootstrap              | Window opens. Title bar reads "Starfall." | ✅ Done 2026-06-17 |
+| M1  Sprite Rendering       | Iden visible on pre-dawn blue.              | ✅ Done 2026-06-17 |
+| M2  Input & Movement       | Iden walks. Feels like Embercoast.          | ✅ Done 2026-06-18 |
+| M2.5 Sprite Animation      | Directional sprite + walk cycle.            | ✅ Done 2026-06-18 |
+| M2.75 Audio                | Music + SFX. Opening silence, then theme.   | 🎯 Next |
+| M3  Tilemap & Collision    | Embercoast traversable. Cliff path blocked. | ⏳ |
+| M3.5 Camera Follow         | Camera tracks Iden, clamps to map bounds.   | ⏳ |
+| M4  Scene File Format      | `embercoast.scene.json` loadable.           | ⏳ |
+| M5  Editor v1              | Room rearrangeable in editor without code.  | ⏳ |
+| M6  Lua Scripting          | Mina exists as a `ScriptComponent`.         | ⏳ |
+| M7  Dialogue               | All three NPCs playable. End-to-end slice.  | ⏳ |
+| M8  Save System            | Salt Light cairn save point works.          | ⏳ |
+| M9  Packaging              | A friend downloads and plays.               | ⏳ |
+| M10 Steam Prep             | Controller support. Store-page draft ready. | ⏳ |
 
-Full milestone map: [`docs/GameDesign.md` §9](docs/GameDesign.md).
+### Beyond v1 (ship-quality + Acts 2-3)
+
+Planned milestones to grow from "v1 slice ships" to "high-quality indie title shippable for any 2D RPG built on the engine." Grouped roughly by purpose; not strictly sequential.
+
+- **Phase 2 — Ship Polish:** UI Framework (M11), Pause + Settings Menu (M12), Map Transitions (M13), Asset Packer + Build Polish (M14), Accessibility (M15), Particles + Juice (M16).
+- **Phase 3 — Game Expansion (Acts 2-3):** Inventory + Items (M17), Combat Shell (M18), Combat AI + Balance Hooks (M19), Party / Companions (M20), Quest / Event Flags (M21), Cutscene / Scripted Event System (M22).
+
+Full milestone breakdown: [`docs/DesignDoc.md` §22](docs/DesignDoc.md) (engineering view) and [`docs/GameDesign.md` §9](docs/GameDesign.md) (game-deliverable view).
 
 ---
 
@@ -38,9 +50,9 @@ Full milestone map: [`docs/GameDesign.md` §9](docs/GameDesign.md).
 - **Language:** C++20 (engine, editor, tools) + Lua (gameplay scripting, M6+)
 - **Build:** CMake ≥ 3.24 + `CMakePresets.json` (Ninja preferred)
 - **Window/Input/Audio:** [SDL3](https://github.com/libsdl-org/SDL) 3.2.16 (static, fetched via `external/`)
-- **Editor UI:** Dear ImGui (M5+)
-- **Serialization:** JSON during development; binary/packed later
-- **Testing:** Catch2 or GoogleTest (added when first system needs tests)
+- **Editor UI:** Dear ImGui (lands at M5)
+- **Serialization:** JSON during development; binary/packed later (M14)
+- **Testing:** [Catch2](https://github.com/catchorg/Catch2) v3.7.1 + CTest (adopted at M2)
 - **Platforms:** Windows + Linux 🐧 🪟 (Steam-friendly distribution)
 
 ---

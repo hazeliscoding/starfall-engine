@@ -79,7 +79,9 @@ This project uses OpenSpec (`/openspec`) for change proposals and specs. When pr
 - **M1 Sprite Rendering (2026-06-17)** — texture-assets + 2d-renderer capabilities; Iden visible on pre-dawn blue background.
 - **M0 Bootstrap (2026-06-17)** — CMake graph + module dependency enforcement; SDL3 window via game_my_rpg→engine_runtime.
 
-**Next milestone target: M3 Tilemap & Collision** (per `docs/GameDesign.md` §9). Goal: Embercoast traversable on a hand-coded map. Cliff path blocked.
+**Next milestone target: M2.75 Audio** (newly inserted into the roadmap on 2026-06-18). Goal: opening 30s of silence; "Embercoast morning" theme fades in when Iden walks outside her door; footstep SFX per step. `engine_audio` graduates from placeholder to a working module. M3 (Tilemap & Collision) follows; M3.5 (Camera Follow) is inserted after M3.
+
+**Roadmap shape**: M0–M10 ships the v1 slice (Embercoast playable). **Phase 2** (M11–M16: UI Framework, Pause + Settings, Map Transitions, Asset Packer, Accessibility, Particles) covers ship-polish work every shipping game needs. **Phase 3** (M17–M22: Inventory, Combat shell + AI, Party, Quests, Cutscenes) covers the systems Acts 2–3 of `my_rpg` need and that any future 2D RPG built on the engine will reuse. Full breakdown in `docs/DesignDoc.md` §22.A.
 
 ## Custom Agents
 
