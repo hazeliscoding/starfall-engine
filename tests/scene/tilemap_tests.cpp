@@ -317,3 +317,55 @@ TEST_CASE("SweepMove: slide along a wall - X applies Y rejected",
     CHECK(applied.x == 5.0f);
     CHECK(applied.y == 0.0f);
 }
+
+// ---------- Per-layer TileSet ----------
+
+TEST_CASE("Tilemap: ResolveTileSet prefers per-layer over shared",
+          "[scene][tilemap][per-layer-tileset]") {
+    auto shared    = std::make_shared<TileSet>(TextureHandle{}, 16, 16, 1);
+    auto perLayer  = std::make_shared<TileSet>(TextureHandle{}, 16, 16, 4);
+    Tilemap tm{16, 16};
+    tm.SetTileSet(shared);
+
+    auto layerA = MakeLayer("uses_shared", 1, 1, {1});
+    auto layerB = MakeLayer("uses_own",    1, 1, {1}, /*sortOrder*/ 10);
+    layerB.tileset = perLayer;
+    tm.AddLayer(std::move(layerA));
+    tm.AddLayer(std::move(layerB));
+
+    const auto& a = tm.Layers()[0];
+    const auto& b = tm.Layers()[1];
+    CHECK(tm.ResolveTileSet(a).get() == shared.get());
+    CHECK(tm.ResolveTileSet(b).get() == perLayer.get());
+}
+
+TEST_CASE("Tilemap: CollidesAABB uses per-layer solidity flags",
+          "[scene][tilemap][collision][per-layer-tileset]") {
+    // Two tilesets with different solid IDs: shared marks tileId=3,
+    // per-layer marks tileId=7. The same numeric tile (3) should NOT
+    // be solid on the per-layer-backed layer.
+    auto shared   = std::make_shared<TileSet>(TextureHandle{}, 16, 16, 1);
+    shared->MarkSolid(3);
+    auto perLayer = std::make_shared<TileSet>(TextureHandle{}, 16, 16, 1);
+    perLayer->MarkSolid(7);
+
+    Tilemap tm{16, 16};
+    tm.SetTileSet(shared);
+
+    auto floor = MakeLayer("floor_shared", 2, 1, {3, 1});  // (0,0)=solid via shared
+    auto over  = MakeLayer("decals_own",   2, 1, {3, 7}, /*sortOrder*/ 50);
+    over.tileset = perLayer;  // (0,0)=tile 3 NOT solid here, (1,0)=tile 7 IS solid
+    tm.AddLayer(std::move(floor));
+    tm.AddLayer(std::move(over));
+
+    CHECK(tm.CollidesAABB(Rect{2, 2, 4, 4}));    // floor tile 3 at col 0
+    CHECK(tm.CollidesAABB(Rect{18, 2, 4, 4}));   // over tile 7 at col 1
+    // A layer-only world where the per-layer tileset doesn't mark 3 as
+    // solid: drop the floor + walk over col 0 of the decals layer.
+    Tilemap tm2{16, 16};
+    auto decalsOnly = MakeLayer("decals_only", 2, 1, {3, 7});
+    decalsOnly.tileset = perLayer;
+    tm2.AddLayer(std::move(decalsOnly));
+    CHECK_FALSE(tm2.CollidesAABB(Rect{2, 2, 4, 4}));  // tile 3 not solid in perLayer
+    CHECK(tm2.CollidesAABB(Rect{18, 2, 4, 4}));        // tile 7 is solid
+}
