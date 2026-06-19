@@ -2,7 +2,7 @@
 
 ### Requirement: TileLayer Data Shape
 
-`engine_scene` SHALL provide an `Engine::Scene::TileLayer` aggregate with: `std::string name`, `int width`, `int height` (both in tiles), `std::vector<int> tileIds` (row-major, length `width * height`; `0` reserved as "empty"), `bool visible` (default `true`), and `int sortOrder` (lower draws first). Zero-sized layers are legal but render nothing.
+`engine_scene` SHALL provide an `Engine::Scene::TileLayer` aggregate with: `std::string name`, `int width`, `int height` (both in tiles), `std::vector<int> tileIds` (row-major, length `width * height`; `0` reserved as "empty"), `bool visible` (default `true`), `int sortOrder` (lower draws first), and `std::shared_ptr<TileSet> tileset` (optional per-layer override; `nullptr` falls back to the Tilemap's shared TileSet — see `ResolveTileSet`). Zero-sized layers are legal but render nothing.
 
 #### Scenario: Construct a 2-layer map
 
@@ -71,6 +71,25 @@
 - **WHEN** game code calls `tilemap.TileSet()` after construction with a valid `std::shared_ptr<TileSet>`
 - **THEN** the returned shared_ptr is the same one supplied
 
+### Requirement: Per-Layer TileSet Resolution
+
+`Tilemap::ResolveTileSet(const TileLayer&) → const std::shared_ptr<TileSet>&` SHALL return the layer's own `tileset` when set, falling back to the Tilemap's shared TileSet otherwise. This lets a single Tilemap mix layers backed by different atlases (e.g. one layer drawn from `terrain.png`, another from `water.png`, another from `house.png`) without forcing the caller to combine them into one texture. `CollidesAABB` SHALL use the resolved TileSet for solidity checks on each layer.
+
+#### Scenario: Layer with its own tileset
+
+- **WHEN** a Tilemap has a shared TileSet `A` and a layer with `layer.tileset = B`
+- **THEN** `ResolveTileSet(layer)` returns `B`
+
+#### Scenario: Layer without its own tileset falls back to shared
+
+- **WHEN** a Tilemap has a shared TileSet `A` and a layer with `layer.tileset == nullptr`
+- **THEN** `ResolveTileSet(layer)` returns `A`
+
+#### Scenario: CollidesAABB uses per-layer solidity
+
+- **WHEN** a Tilemap has two layers backed by different TileSets — TileSet `X` marks `tileId=3` solid, TileSet `Y` marks `tileId=7` solid — and the AABB overlaps tile id 3 on the X-backed layer
+- **THEN** `CollidesAABB` returns `true`; and the same AABB overlapping tile id 3 on the Y-backed layer returns `false` (because tile 3 is not solid in TileSet `Y`)
+
 ### Requirement: Visible Tile Iteration
 
 `Tilemap::ForEachVisibleTile(viewport, visit)` SHALL invoke `visit(const TileLayer&, Math::Vec2 worldPos, int tileId)` for every non-empty tile across all visible layers (skipping layers with `visible == false`) whose world rect overlaps the supplied viewport `Math::Rect`. Layers SHALL be visited in `sortOrder` ascending. Tiles within a layer SHALL be visited in row-major order. The visitor is responsible for whatever rendering / processing happens — `Tilemap` does NOT call into `engine_render`.
@@ -102,7 +121,7 @@
 
 ### Requirement: AABB Collision Against Solid Tiles
 
-`Tilemap::CollidesAABB(const Math::Rect& worldRect) → bool` SHALL return `true` if any solid tile (per the configured `TileSet::IsSolid`) on ANY visible layer overlaps `worldRect`. Hidden layers SHALL be ignored. The query MUST be O(tiles touched by worldRect) — bounded constant for entity-sized AABBs.
+`Tilemap::CollidesAABB(const Math::Rect& worldRect) → bool` SHALL return `true` if any solid tile (per `ResolveTileSet(layer)->IsSolid`) on ANY visible layer overlaps `worldRect`. Hidden layers SHALL be ignored. Layers with no resolvable TileSet (neither a per-layer nor a shared one) SHALL be skipped silently. The query MUST be O(tiles touched by worldRect) — bounded constant for entity-sized AABBs.
 
 #### Scenario: AABB clear of all solid tiles
 

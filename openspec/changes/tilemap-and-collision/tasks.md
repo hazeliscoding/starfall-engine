@@ -53,3 +53,17 @@
 - [x] 8.1 GameDesign §9 M3 row marked ✅ with date + summary.
 - [x] 8.2 CLAUDE.md "Current Status" rewritten for M3 done; M2.75 → Previously complete; Next target M3.25 Tileset Animation.
 - [x] 8.3 README status table: M3 ✅; M3.25 🎯 Next.
+
+## 9. Per-Layer TileSet + TimeFantasy Art Swap (in-PR follow-on)
+
+Scope added 2026-06-19 after the initial placeholder-tileset implementation landed: extend the engine so a single Tilemap can mix multiple TileSets (one per layer), then re-author Embercoast against the licensed TimeFantasy `terrain.png` + `water.png` + `house.png` packs with a procedural-tileset fallback for public clones.
+
+- [x] 9.1 `TileLayer` gains optional `std::shared_ptr<TileSet> tileset` (null = use the Tilemap's shared one).
+- [x] 9.2 `Tilemap::ResolveTileSet(const TileLayer&)` returns the layer's own or the shared, in that order.
+- [x] 9.3 `CollidesAABB` uses `ResolveTileSet(layer)` for per-layer solidity. Backward compatible: callers that only set `Tilemap::SetTileSet` still work.
+- [x] 9.4 2 new tests: ResolveTileSet preference + CollidesAABB per-layer solidity (60/60 pass on both platforms).
+- [x] 9.5 Spec delta extended: new `Per-Layer TileSet Resolution` requirement + 3 scenarios; CollidesAABB requirement reworded to reference `ResolveTileSet`.
+- [x] 9.6 `main.cpp` rewritten to load 3 PNGs (terrain.png 39 cols, water.png 51 cols, house.png 69 cols) with licensed-tileset-or-fallback logic mirroring the M2.75 audio approach. 5 thin masks (grass, cliff, building, sea, awning) authored as ASCII; each layer pinned to its TileSet.
+- [x] 9.7 Tile-ID picks centralised in `TerrainTile{Grass=44, Path=161, Cliff=550}`, `WaterTile{Sea=207}`, `HouseTile{Wall=278, Awning=299}` namespaces — iteration is a one-line change.
+- [x] 9.8 Windows + Linux verified: 60/60 tests, runtime smoke logs `Embercoast loaded: 20x12 tiles (world 320x192), TimeFantasy art` on both.
+- [ ] 9.9 Visual eye-check of TimeFantasy art picks. **Deferred to user attended-test.** First-pass IDs were picked from probe + crop renders; cliff cap may tile imperfectly horizontally and the awning is a slate-roof-with-beam tile rather than a pure overhang. Adjust the constants in `main.cpp` per Game Director taste.
