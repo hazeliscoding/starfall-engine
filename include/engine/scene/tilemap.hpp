@@ -27,6 +27,11 @@ public:
     void SetTileSet(std::shared_ptr<class TileSet> tileset) noexcept;
     const std::shared_ptr<class TileSet>& TileSet() const noexcept { return tileset_; }
 
+    // Resolve the TileSet that backs `layer`: returns the layer's own
+    // tileset when set, otherwise falls back to the shared one. May
+    // return null if neither is configured.
+    const std::shared_ptr<class TileSet>& ResolveTileSet(const TileLayer& layer) const noexcept;
+
     // Stable-insert a layer in ascending sortOrder. Later AddLayer calls
     // with the same sortOrder retain insertion order (stable).
     void AddLayer(TileLayer layer);

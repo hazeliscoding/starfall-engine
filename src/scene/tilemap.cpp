@@ -13,6 +13,11 @@ void Tilemap::SetTileSet(std::shared_ptr<class TileSet> tileset) noexcept {
     tileset_ = std::move(tileset);
 }
 
+const std::shared_ptr<class TileSet>&
+Tilemap::ResolveTileSet(const TileLayer& layer) const noexcept {
+    return layer.tileset ? layer.tileset : tileset_;
+}
+
 void Tilemap::AddLayer(TileLayer layer) {
     // Stable insert: walk to the first existing layer with strictly
     // greater sortOrder; insert before it.
@@ -101,10 +106,10 @@ void Tilemap::ForEachVisibleTile(const Engine::Math::Rect& viewport,
 }
 
 bool Tilemap::CollidesAABB(const Engine::Math::Rect& worldRect) const {
-    if (!tileset_) return false;
-
     for (const auto& layer : layers_) {
         if (!layer.visible) continue;
+        const auto& ts = ResolveTileSet(layer);
+        if (!ts) continue;
 
         int colStart, colEnd, rowStart, rowEnd;
         const int leftPx   = static_cast<int>(worldRect.x);
@@ -117,7 +122,7 @@ bool Tilemap::CollidesAABB(const Engine::Math::Rect& worldRect) const {
         for (int row = rowStart; row < rowEnd; ++row) {
             for (int col = colStart; col < colEnd; ++col) {
                 const int tileId = layer.tileIds[row * layer.width + col];
-                if (tileset_->IsSolid(tileId)) return true;
+                if (ts->IsSolid(tileId)) return true;
             }
         }
     }
