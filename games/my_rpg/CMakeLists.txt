@@ -5,6 +5,7 @@ starfall_add_module(
         src/main.cpp
     DEPENDS
         engine_runtime
+        engine_scene
 )
 
 # Mirror source assets into the runtime output dir alongside the
