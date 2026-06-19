@@ -1672,17 +1672,61 @@ plays on each step.
 
 ### Milestone 3 — Tilemap and Collision
 
+Scope expanded on 2026-06-19 during the M3↔M4 audit: multi-layer
+rendering and entity Y-sort were originally implicit but a real top-down
+RPG town can't ship without either (a single-layer map can't have eaves
+or awnings; without Y-sort, NPCs walking past the player always render
+on top OR under, both wrong). Folded into M3 because they're part of
+"the tilemap renders correctly."
+
 Goals:
 
-* Load tilemap
-* Render map
+* Load tilemap (hand-coded data at M3; JSON serializer at M4)
+* Render map — **multiple tile layers** (ground + overhead) with stable
+  per-layer sort order
 * Add solid tiles
-* Prevent walking through walls
+* **Per-axis sweep collision** preventing walking through walls (entity
+  slides along walls instead of catching on corners)
+* **Y-sort entities** against tilemap depth so player + NPCs depth-sort
+  by feet-Y when their layers overlap
+* Expose `WorldWidth() / WorldHeight()` for M3.5's camera bounds clamp
 
 Deliverable:
 
 ```text
-Player walks around a small map and collides with walls.
+Iden walks around Embercoast — ground tiles below, overhead tiles
+(eaves/awnings) above. Walking into a wall blocks her cleanly;
+diagonal into a wall slides along it. Cliff path is blocked.
+```
+
+---
+
+### Milestone 3.25 — Tileset Animation
+
+Inserted between M3 and M3.5 during the M3↔M4 audit (2026-06-19).
+Without animated tiles, GameDesign §5.1's "amber lantern light" can't
+flicker and the coastal water at Embercoast looks frozen — the indie
+2D-RPG bar expects animated tiles for these. Separate concern from
+sprite animation (per-tile timer/clip, not per-entity), which is why
+it's a sibling milestone, not a sub-task of M3.
+
+This section is a **stub** — the real spec lands in the
+`tileset-animation` change proposal.
+
+Goals:
+
+* Per-tile-id animation clips (re-using the AnimationClip frame-list +
+  frameDuration + looping shape from M2.5).
+* Tilemap rendering iterates animated tiles' current frame at draw
+  time (rather than the static base frame).
+* Game-side: water tiles and lantern tiles on Embercoast animate
+  visibly.
+
+Deliverable:
+
+```text
+Embercoast's ocean tiles lap and its lanterns flicker. Iden walks
+through a world that breathes.
 ```
 
 ---

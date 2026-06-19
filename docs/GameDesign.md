@@ -375,6 +375,7 @@ Every engine milestone produces a visible game improvement (per
 | ✅ M2.5 Sprite Animation (2026-06-18) | Iden faces direction of travel via 4-directional sprite swap. Walk cycle (`[walk1, stand, walk2, stand]`, 8 fps) plays when moving; idle stand frame when standing. AnimatedSprite primitive added to engine_render. Verified Windows + Linux (26/26 tests pass). |
 | ✅ M2.75 Audio (2026-06-18) | Opening silence. First movement triggers a 2s fade-in of the placeholder Embercoast theme. Footstep SFX every 16 logical px (~2/sec). AudioSystem + Music/Sound + 16 SFX tracks via SDL3_mixer 3.2.4. Verified Windows + Linux (36/36 tests pass). |
 | M3 Tilemap & Collision  | Embercoast traversable on a hand-coded map. Cliff path blocked.            |
+| M3.25 Tileset Animation | Ocean tiles lap and lanterns flicker at Embercoast.                        |
 | M3.5 Camera Follow      | Iden walks the full Embercoast map. Camera follows, clamps to map bounds.  |
 | M4 Scene File Format    | `embercoast.scene.json` loadable; replaces the hand-coded version.         |
 | M5 Editor v1            | The room can be rearranged in the editor without code.                     |
