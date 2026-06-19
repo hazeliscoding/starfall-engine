@@ -22,81 +22,135 @@
 #include <vector>
 
 // ============================================================================
-// Tile IDs — matched to the placeholder tileset row order (see
-// tools/gen_placeholder_tileset.py for the source-of-truth palette).
+// Tile-ID picks per TimeFantasy tileset. To iterate, change a single number
+// and rebuild; tools/preview_tilesets.py renders each pick for visual check.
 // ============================================================================
-namespace TileId {
+namespace TerrainTile {                              // terrain.png, 39 cols
+    constexpr int Grass = 1 * 39 +  4 + 1;           // (4,1)   = 44   plain green
+    constexpr int Path  = 4 * 39 +  4 + 1;           // (4,4)   = 161  brown dirt
+    constexpr int Cliff = 14 * 39 +  3 + 1;          // (3,14)  = 550  cliff w/ grass cap
+}
+namespace WaterTile {                                // water.png, 51 cols
+    constexpr int Sea   = 4 * 51 +  2 + 1;           // (2,4)   = 207  plain water frame 0
+}
+namespace HouseTile {                                // house.png, 69 cols
+    constexpr int Wall   = 4 * 69 +  1 + 1;          // (1,4)   = 278  wood-log wall
+    constexpr int Awning = 4 * 69 + 22 + 1;          // (22,4)  = 299  slate roof + beam
+}
+
+// Placeholder fallback IDs (the procedural 5-tile PNG, 1-column layout).
+namespace PlaceholderTile {
     constexpr int Empty = 0;
     constexpr int Grass = 1;
     constexpr int Path  = 2;
-    constexpr int Stone = 3;  // solid
-    constexpr int Wall  = 4;  // solid
-    constexpr int Water = 5;  // solid
+    constexpr int Stone = 3;
+    constexpr int Wall  = 4;
+    constexpr int Water = 5;
 }
 
 // ============================================================================
-// Embercoast ground layer (20×12 — one logical-screen-wide, slightly taller).
-// Charset: W=wall, G=grass, .=path, S=stone (building), ~=water, space=empty.
+// Embercoast — 20x12 hand-authored. Each '.' in a layer means "empty here";
+// the layer only carries its own art (grass layer has grass, water layer has
+// water, etc.). Layers stack with the Y-sort visitor in onRender.
 //
-// Scene reads (north = top): cliff-path wall to the north; one small stone
-// building in the middle; sea to the south. Grass borders.
+// Reads (north = top): cliff wall (cliff layer); grass band; building
+// (building layer); awning overhead (awning layer, drawn over player);
+// sea band (water layer).
 // ============================================================================
-constexpr std::string_view kEmbercoastGround =
-    "WWWWWWWWWWWWWWWWWWWW"   // r0  cliff path blocked
-    "WGGGGGGGGGGGGGGGGGGW"   // r1
-    "WG................GW"   // r2
-    "WG......SSSS......GW"   // r3  building north wall
-    "WG......S..S......GW"   // r4  building (doorway visual)
-    "WG......SSSS......GW"   // r5  building south wall
-    "WG................GW"   // r6  walkable strip — Iden walks under the awning here
-    "WG................GW"   // r7
-    "WG................GW"   // r8
-    "WG~~~~~~~~~~~~~~~~GW"   // r9  sea
-    "WG~~~~~~~~~~~~~~~~GW"   // r10
-    "WWWWWWWWWWWWWWWWWWWW";  // r11
-
-// Overhead layer — same dimensions. 'A' = awning (rendered as stone-tile
-// for placeholder; real awning art comes with the TimeFantasy swap).
-constexpr std::string_view kEmbercoastOverhead =
-    "                    "   // r0
-    "                    "   // r1
-    "                    "   // r2
-    "                    "   // r3
-    "                    "   // r4
-    "                    "   // r5
-    "       AAAA         "   // r6  awning extends south of building
-    "                    "   // r7
-    "                    "   // r8
-    "                    "   // r9
-    "                    "   // r10
-    "                    "; // r11
-
 constexpr int kEmbercoastWidth  = 20;
 constexpr int kEmbercoastHeight = 12;
 constexpr int kTileSize         = 16;
 
-// Convert a multi-row char string (no separators) to a TileLayer.
-Engine::Scene::TileLayer MakeLayerFromAscii(std::string_view name,
-                                            int width, int height,
-                                            std::string_view ascii,
-                                            int sortOrder = 0) {
+// Layer 0 — grass everywhere except cliff row + water rows.
+constexpr std::string_view kGrassMask =
+    "...................."   // r0  cliff above (no grass)
+    "GGGGGGGGGGGGGGGGGGGG"   // r1
+    "GGGGGGGGGGGGGGGGGGGG"   // r2
+    "GGGGGGGGGGGGGGGGGGGG"   // r3  grass beneath building footprint
+    "GGGGGGGGGGGGGGGGGGGG"   // r4
+    "GGGGGGGGGGGGGGGGGGGG"   // r5
+    "GGGGGGGGGGGGGGGGGGGG"   // r6
+    "GGGGGGGGGGGGGGGGGGGG"   // r7
+    "GGGGGGGGGGGGGGGGGGGG"   // r8
+    "...................."   // r9  sea
+    "...................."   // r10
+    "...................."; // r11
+
+// Layer 1 — cliff wall north edge (solid).
+constexpr std::string_view kCliffMask =
+    "CCCCCCCCCCCCCCCCCCCC"   // r0
+    "...................."   // r1..r11 empty
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "....................";
+
+// Layer 2 — building walls (solid).
+constexpr std::string_view kBuildingMask =
+    "...................."   // r0
+    "...................."   // r1
+    "...................."   // r2
+    "........BBBB........"   // r3  building north wall
+    "........B..B........"   // r4  building (interior strip; B walls are solid)
+    "........BBBB........"   // r5  building south wall
+    "...................."   // r6  (awning lives on layer 4)
+    "...................."   // r7
+    "...................."   // r8
+    "...................."   // r9
+    "...................."   // r10
+    "...................."; // r11
+
+// Layer 3 — sea band (solid).
+constexpr std::string_view kSeaMask =
+    "...................."   // r0..r8 empty
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "~~~~~~~~~~~~~~~~~~~~"   // r9
+    "~~~~~~~~~~~~~~~~~~~~"   // r10
+    "~~~~~~~~~~~~~~~~~~~~"; // r11
+
+// Layer 4 — overhead awning (drawn after player; player walks under).
+constexpr std::string_view kAwningMask =
+    "...................."   // r0..r5
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "...................."
+    "........AAAA........"   // r6  awning extends south of building
+    "...................."   // r7..r11
+    "...................."
+    "...................."
+    "...................."
+    "....................";
+
+// Build a TileLayer from one mask + a charset-to-tileId map.
+struct CharToId { char c; int id; };
+Engine::Scene::TileLayer MakeLayer(std::string_view name, int sortOrder,
+                                   std::string_view ascii,
+                                   std::initializer_list<CharToId> map) {
     Engine::Scene::TileLayer layer;
     layer.name      = std::string{name};
-    layer.width     = width;
-    layer.height    = height;
+    layer.width     = kEmbercoastWidth;
+    layer.height    = kEmbercoastHeight;
     layer.sortOrder = sortOrder;
-    layer.tileIds.reserve(static_cast<std::size_t>(width * height));
+    layer.tileIds.reserve(static_cast<std::size_t>(kEmbercoastWidth * kEmbercoastHeight));
     for (char c : ascii) {
-        switch (c) {
-            case '.': layer.tileIds.push_back(TileId::Path);  break;
-            case 'G': layer.tileIds.push_back(TileId::Grass); break;
-            case 'S': layer.tileIds.push_back(TileId::Stone); break;
-            case 'W': layer.tileIds.push_back(TileId::Wall);  break;
-            case '~': layer.tileIds.push_back(TileId::Water); break;
-            case 'A': layer.tileIds.push_back(TileId::Stone); break;  // awning placeholder
-            case ' ': layer.tileIds.push_back(TileId::Empty); break;
-            default:  layer.tileIds.push_back(TileId::Empty); break;
-        }
+        int id = 0;
+        for (const auto& [k, v] : map) { if (k == c) { id = v; break; } }
+        layer.tileIds.push_back(id);
     }
     return layer;
 }
@@ -106,7 +160,7 @@ Engine::Scene::TileLayer MakeLayerFromAscii(std::string_view name,
 // ============================================================================
 struct PlayerState {
     Engine::Render::AnimatedSprite sprite;
-    Engine::Math::Vec2             position{160.0f - 16.0f, 90.0f};  // re-centered in onStart
+    Engine::Math::Vec2             position{160.0f - 16.0f, 90.0f};
     enum class Direction { Up, Down, Left, Right } facing = Direction::Down;
 
     Engine::Audio::AudioSystem*   audio = nullptr;
@@ -115,13 +169,12 @@ struct PlayerState {
     bool                          musicTriggered      = false;
     float                         footstepDistanceAcc = 0.0f;
 
-    // M3: tilemap + collision.
     std::unique_ptr<Engine::Scene::Tilemap> tilemap;
 };
 
 constexpr float                  kIdenWalkSpeed     = 60.0f;
 constexpr float                  kFootstepDistance  = 16.0f;
-constexpr Engine::Math::Vec2     kPlayerCollisionSize{12.0f, 8.0f};   // feet AABB (design D5)
+constexpr Engine::Math::Vec2     kPlayerCollisionSize{12.0f, 8.0f};
 
 namespace {
 
@@ -160,8 +213,6 @@ void BuildFallbackClips(Engine::Render::AnimatedSprite& sprite,
     }
 }
 
-// Bottom-center feet AABB at a sprite position. Sprite is drawn from
-// position (its top-left); the AABB sits at the bottom-center.
 Engine::Math::Rect FeetAABB(Engine::Math::Vec2 position, int spriteW, int spriteH) {
     return Engine::Math::Rect{
         position.x + (static_cast<float>(spriteW) - kPlayerCollisionSize.x) * 0.5f,
@@ -169,6 +220,80 @@ Engine::Math::Rect FeetAABB(Engine::Math::Vec2 position, int spriteW, int sprite
         kPlayerCollisionSize.x,
         kPlayerCollisionSize.y,
     };
+}
+
+// Build a 5-layer Embercoast backed by 3 TimeFantasy tilesets (one tileset
+// per ground/water/house layer). Each call sets up MarkSolid on its own
+// tileset before the layer is added.
+void BuildLicensedEmbercoast(Engine::Scene::Tilemap& tm,
+                             std::shared_ptr<Engine::Scene::TileSet> terrainTs,
+                             std::shared_ptr<Engine::Scene::TileSet> waterTs,
+                             std::shared_ptr<Engine::Scene::TileSet> houseTs) {
+    terrainTs->MarkSolid(TerrainTile::Cliff);
+    waterTs  ->MarkSolid(WaterTile::Sea);
+    houseTs  ->MarkSolid(HouseTile::Wall);
+
+    auto grass = MakeLayer("grass",    0,  kGrassMask,    {{'G', TerrainTile::Grass}});
+    auto cliff = MakeLayer("cliff",    1,  kCliffMask,    {{'C', TerrainTile::Cliff}});
+    auto bldg  = MakeLayer("building", 2,  kBuildingMask, {{'B', HouseTile::Wall}});
+    auto sea   = MakeLayer("sea",      3,  kSeaMask,      {{'~', WaterTile::Sea}});
+    auto awn   = MakeLayer("awning", 100,  kAwningMask,   {{'A', HouseTile::Awning}});
+    grass.tileset = terrainTs;
+    cliff.tileset = terrainTs;
+    bldg .tileset = houseTs;
+    sea  .tileset = waterTs;
+    awn  .tileset = houseTs;
+    tm.AddLayer(std::move(grass));
+    tm.AddLayer(std::move(cliff));
+    tm.AddLayer(std::move(bldg));
+    tm.AddLayer(std::move(sea));
+    tm.AddLayer(std::move(awn));
+}
+
+// Public-contributor fallback: a 2-layer Embercoast on the procedural
+// placeholder tileset (5 IDs in a single column). Same map shape, plainer
+// art. Tilemap's shared TileSet handles solidity for both layers.
+void BuildPlaceholderEmbercoast(Engine::Scene::Tilemap& tm,
+                                std::shared_ptr<Engine::Scene::TileSet> placeholder) {
+    placeholder->MarkSolid(PlaceholderTile::Stone);
+    placeholder->MarkSolid(PlaceholderTile::Wall);
+    placeholder->MarkSolid(PlaceholderTile::Water);
+    tm.SetTileSet(placeholder);
+
+    // Combine all features into 2 layers (ground + overhead) using the
+    // single placeholder tileset.
+    constexpr std::string_view kGround =
+        "WWWWWWWWWWWWWWWWWWWW"
+        "WGGGGGGGGGGGGGGGGGGW"
+        "WG................GW"
+        "WG......SSSS......GW"
+        "WG......S..S......GW"
+        "WG......SSSS......GW"
+        "WG................GW"
+        "WG................GW"
+        "WG................GW"
+        "WG~~~~~~~~~~~~~~~~GW"
+        "WG~~~~~~~~~~~~~~~~GW"
+        "WWWWWWWWWWWWWWWWWWWW";
+    constexpr std::string_view kOver =
+        "                    "
+        "                    "
+        "                    "
+        "                    "
+        "                    "
+        "                    "
+        "       AAAA         "
+        "                    "
+        "                    "
+        "                    "
+        "                    "
+        "                    ";
+    tm.AddLayer(MakeLayer("ground",   0, kGround,
+        {{'W', PlaceholderTile::Wall},  {'G', PlaceholderTile::Grass},
+         {'.', PlaceholderTile::Path},  {'S', PlaceholderTile::Stone},
+         {'~', PlaceholderTile::Water}}));
+    tm.AddLayer(MakeLayer("overhead", 100, kOver,
+        {{'A', PlaceholderTile::Stone}}));
 }
 
 }  // namespace
@@ -236,33 +361,56 @@ int main(int /*argc*/, char** /*argv*/) {
             }
 
             // ---- Tilemap (M3) ----
-            // M3 ships with the procedural placeholder tileset to keep
-            // visuals deterministic. The TimeFantasy `outside.png` pack
-            // is available locally for a Game-Director art pass; swapping
-            // is a one-line change to the texture path + tile-ID picks.
-            auto tilesetTex = loader.LoadTexture("assets/tiles/placeholder_tileset.png");
-            if (tilesetTex.IsOk()) {
-                auto tileset = std::make_shared<Engine::Scene::TileSet>(
-                    tilesetTex.Value(),
-                    /*tileWidth*/ kTileSize, /*tileHeight*/ kTileSize,
-                    /*columns*/ 1);
-                tileset->MarkSolid(TileId::Stone);
-                tileset->MarkSolid(TileId::Wall);
-                tileset->MarkSolid(TileId::Water);
+            // Prefer the licensed TimeFantasy tilesets (3 PNGs: terrain.png
+            // for ground+cliff, water.png for the sea, house.png for the
+            // building + awning). Fall back to the procedural placeholder
+            // tileset (a single PNG, committed) if any are missing — public
+            // clones still build and run.
+            auto terrainRes = loader.LoadTexture(
+                "assets/TimeFantasy_TILES_6.24.17/TILESETS/terrain.png");
+            auto waterRes   = loader.LoadTexture(
+                "assets/TimeFantasy_TILES_6.24.17/TILESETS/water.png");
+            auto houseRes   = loader.LoadTexture(
+                "assets/TimeFantasy_TILES_6.24.17/TILESETS/house.png");
+            const bool licensedReady =
+                terrainRes.IsOk() && waterRes.IsOk() && houseRes.IsOk();
 
-                player.tilemap = std::make_unique<Engine::Scene::Tilemap>(kTileSize, kTileSize);
-                player.tilemap->SetTileSet(tileset);
-                player.tilemap->AddLayer(MakeLayerFromAscii(
-                    "ground", kEmbercoastWidth, kEmbercoastHeight,
-                    kEmbercoastGround, /*sortOrder*/ 0));
-                player.tilemap->AddLayer(MakeLayerFromAscii(
-                    "overhead", kEmbercoastWidth, kEmbercoastHeight,
-                    kEmbercoastOverhead, /*sortOrder*/ 100));
+            player.tilemap = std::make_unique<Engine::Scene::Tilemap>(kTileSize, kTileSize);
 
-                // Spawn Iden on the walkable strip south of the building.
-                // Target: feet ~ row 7 col 9 (world tile (9, 7)). Sprite
-                // top-left = (col*16 - (w-16)/2, row*16 - (h-16)) so
-                // feet land on the target tile.
+            if (licensedReady) {
+                auto terrainTs = std::make_shared<Engine::Scene::TileSet>(
+                    terrainRes.Value(), kTileSize, kTileSize, /*columns*/ 39);
+                auto waterTs = std::make_shared<Engine::Scene::TileSet>(
+                    waterRes.Value(),   kTileSize, kTileSize, /*columns*/ 51);
+                auto houseTs = std::make_shared<Engine::Scene::TileSet>(
+                    houseRes.Value(),   kTileSize, kTileSize, /*columns*/ 69);
+                BuildLicensedEmbercoast(*player.tilemap, terrainTs, waterTs, houseTs);
+                SF_LOG_INFO("Game",
+                    "Embercoast loaded: %dx%d tiles (world %dx%d), TimeFantasy art",
+                    kEmbercoastWidth, kEmbercoastHeight,
+                    player.tilemap->WorldWidth(), player.tilemap->WorldHeight());
+            } else {
+                SF_LOG_WARN("Game",
+                    "TimeFantasy tilesets not available, falling back to placeholder. "
+                    "(IGNORE this warning if you haven't licensed the TimeFantasy pack.)");
+                auto placeholderTex = loader.LoadTexture("assets/tiles/placeholder_tileset.png");
+                if (placeholderTex.IsErr()) {
+                    SF_LOG_ERROR("Game",
+                        "Placeholder tileset failed too — Iden will walk on a blank scene.");
+                    player.tilemap.reset();
+                } else {
+                    auto placeholder = std::make_shared<Engine::Scene::TileSet>(
+                        placeholderTex.Value(), kTileSize, kTileSize, /*columns*/ 1);
+                    BuildPlaceholderEmbercoast(*player.tilemap, placeholder);
+                    SF_LOG_INFO("Game",
+                        "Embercoast loaded: %dx%d tiles (world %dx%d), placeholder art",
+                        kEmbercoastWidth, kEmbercoastHeight,
+                        player.tilemap->WorldWidth(), player.tilemap->WorldHeight());
+                }
+            }
+
+            // Spawn Iden on the walkable strip south of the building (row 7).
+            if (player.tilemap) {
                 if (auto frame = player.sprite.CurrentFrame()) {
                     const float w = static_cast<float>(frame->Width());
                     const float h = static_cast<float>(frame->Height());
@@ -271,13 +419,6 @@ int main(int /*argc*/, char** /*argv*/) {
                         7.0f * kTileSize - (h - kTileSize),
                     };
                 }
-                SF_LOG_INFO("Game",
-                    "Embercoast loaded: %dx%d tiles (world %dx%d)",
-                    kEmbercoastWidth, kEmbercoastHeight,
-                    player.tilemap->WorldWidth(), player.tilemap->WorldHeight());
-            } else {
-                SF_LOG_ERROR("Game",
-                    "Tileset failed to load — Iden will walk on a blank scene.");
             }
         },
 
@@ -308,7 +449,6 @@ int main(int /*argc*/, char** /*argv*/) {
                 else if (input.IsHeld("MoveRight")) player.facing = Dir::Right;
             }
 
-            // Desired displacement.
             const float step = kIdenWalkSpeed * dt;
             Engine::Math::Vec2 displacement{0.0f, 0.0f};
             const bool isMoving = anyMoveHeld;
@@ -321,7 +461,6 @@ int main(int /*argc*/, char** /*argv*/) {
                 }
             }
 
-            // M3: route movement through the per-axis tilemap sweep.
             if (player.tilemap && (displacement.x != 0.0f || displacement.y != 0.0f)) {
                 auto frame = player.sprite.CurrentFrame();
                 const int  spriteW = frame ? frame->Width()  : 16;
@@ -335,18 +474,15 @@ int main(int /*argc*/, char** /*argv*/) {
                 player.position.x += applied.x;
                 player.position.y += applied.y;
             } else if (displacement.x != 0.0f || displacement.y != 0.0f) {
-                // No tilemap — fall back to free movement (M2 behavior).
                 player.position.x += displacement.x;
                 player.position.y += displacement.y;
             }
 
-            // Animation clip + Update.
             const std::string clip =
                 std::string{isMoving ? "walk_" : "idle_"} + DirectionName(player.facing);
             player.sprite.Play(clip);
             player.sprite.Update(dt);
 
-            // Audio triggers (M2.75).
             if (player.audio != nullptr) {
                 if (!player.musicTriggered && isMoving && player.theme) {
                     player.audio->PlayMusic(player.theme, true, 2.0f, 0.0f);
@@ -365,27 +501,26 @@ int main(int /*argc*/, char** /*argv*/) {
         },
 
         .onRender = [&player](Engine::Render::Renderer& renderer) {
-            // M3 viewport = whole logical surface, anchored at (0, 0).
-            // M3.5 moves the viewport to follow the player.
             const Engine::Math::Rect viewport{0.0f, 0.0f, 320.0f, 180.0f};
 
-            auto drawTile = [&](const Engine::Scene::TileLayer& /*layer*/,
+            // Visitor resolves the per-layer tileset (falls back to the
+            // shared one when a layer doesn't carry its own).
+            auto drawTile = [&](const Engine::Scene::TileLayer& layer,
                                 Engine::Math::Vec2 worldPos, int tileId) {
                 if (!player.tilemap) return;
-                const auto& tileset = player.tilemap->TileSet();
-                if (!tileset) return;
-                renderer.DrawSprite(tileset->Texture(), worldPos,
-                                    tileset->SourceRect(tileId));
+                const auto& ts = player.tilemap->ResolveTileSet(layer);
+                if (!ts) return;
+                renderer.DrawSprite(ts->Texture(), worldPos, ts->SourceRect(tileId));
             };
 
-            // Pass 1: ground layers.
+            // Pass 1: ground + mid layers below the player.
             if (player.tilemap) {
                 player.tilemap->ForEachVisibleTile(viewport, /*minSort*/ -10'000, /*maxSort*/ 49, drawTile);
             }
 
-            // Pass 2: mid-layer entities, Y-sorted (design D4).
+            // Pass 2: mid-layer entities Y-sorted by feet.
             struct Drawable {
-                float                 sortKey;  // feet Y
+                float                 sortKey;
                 std::function<void()> draw;
             };
             std::vector<Drawable> mid;
@@ -402,7 +537,7 @@ int main(int /*argc*/, char** /*argv*/) {
                       [](const Drawable& a, const Drawable& b) { return a.sortKey < b.sortKey; });
             for (auto& d : mid) d.draw();
 
-            // Pass 3: overhead layers.
+            // Pass 3: overhead (awning) layers.
             if (player.tilemap) {
                 player.tilemap->ForEachVisibleTile(viewport, /*minSort*/ 50, /*maxSort*/ 10'000, drawTile);
             }
