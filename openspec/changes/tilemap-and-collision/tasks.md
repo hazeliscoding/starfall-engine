@@ -1,71 +1,55 @@
 ## 1. Roadmap Doc Updates (Land Up Front)
 
-- [ ] 1.1 Expand DesignDoc §22 "Milestone 3 — Tilemap and Collision" Goals to add: "Multiple tile layers (ground + overhead)" and "Y-sort entities against tilemap depth". Deliverable line stays. Touches: `docs/DesignDoc.md`.
-- [ ] 1.2 Insert a new "Milestone 3.25 — Tileset Animation" subsection in DesignDoc §22 between M3 and M3.5. Goals: per-tile animation clips (re-use AnimationClip primitive shape), water + lantern flicker on Embercoast. Deliverable: visible tile motion in the M3 map. Mark explicitly as "stub, real spec lands in its own change." Touches: `docs/DesignDoc.md`.
-- [ ] 1.3 Insert M3.25 row in GameDesign §9 between M3 and M3.5: `| M3.25 Tileset Animation | Ocean tiles lap and lanterns flicker at Embercoast. |`. Touches: `docs/GameDesign.md`.
-- [ ] 1.4 Insert M3.25 row in README.md status table between M3 and M3.5, with `⏳` state. Touches: `README.md`.
+- [x] 1.1 DesignDoc §22 Milestone 3 expanded: added multi-layer rendering and Y-sort to Goals; appended a "scope expanded on 2026-06-19" note explaining why both folded into M3. Deliverable line updated to mention the visible outcome (walls block cleanly, sliding works, cliff path blocked).
+- [x] 1.2 DesignDoc §22 gained new "Milestone 3.25 — Tileset Animation" subsection between M3 and M3.5. Marked explicitly as a stub. Goals reference re-using the M2.5 AnimationClip primitive shape.
+- [x] 1.3 GameDesign §9 row inserted: `| M3.25 Tileset Animation | Ocean tiles lap and lanterns flicker at Embercoast. |`.
+- [x] 1.4 README status table row inserted with `⏳`.
 
 ## 2. engine_scene — Real Code
 
-- [ ] 2.1 Add `include/engine/scene/tile_layer.hpp`: `Engine::Scene::TileLayer` aggregate (name + width + height + tileIds vector + visible + sortOrder). Header-only. Touches: `engine_scene`.
-- [ ] 2.2 Add `include/engine/scene/tile_set.hpp` + `src/scene/tile_set.cpp`: `Engine::Scene::TileSet` holds `Engine::Assets::TextureHandle` + tile dims + columns; `SourceRect(tileId)` row-major lookup; `MarkSolid` / `IsSolid` via `std::unordered_set<int> solidTileIds_`; `IsSolid(0)` always returns false; `MarkSolid(0)` is silent no-op. Touches: `engine_scene`.
-- [ ] 2.3 Add `include/engine/scene/tilemap.hpp` + `src/scene/tilemap.cpp`: `Engine::Scene::Tilemap` with constructor taking tile dims; `SetTileSet(std::shared_ptr<TileSet>)`; `AddLayer(TileLayer)` stable-sorts by sortOrder; `Layers()` returns `std::span<const TileLayer>`; `WorldWidth()` / `WorldHeight()` computed from max-layer-dims × tile dims; `ForEachVisibleTile(viewport, visit)` per spec (visit signature: `void(const TileLayer&, Math::Vec2, int)`); `CollidesAABB(rect)` iterates only the tiles the AABB overlaps (O(≤6) per query for entity-sized AABBs). Touches: `engine_scene`.
-- [ ] 2.4 Add `include/engine/scene/sweep.hpp` + `src/scene/sweep.cpp`: free function `Engine::Scene::SweepMove(currentPos, displacement, aabbSize, tilemap) → Math::Vec2`. Per-axis independent test (X then Y, both rejected independently if they'd collide). Touches: `engine_scene`.
-- [ ] 2.5 Update `src/scene/CMakeLists.txt`: SOURCES `tile_set.cpp + tilemap.cpp + sweep.cpp`; drop placeholder.cpp. DEPENDS unchanged (`engine_core + engine_math + engine_assets`). Touches: `engine_scene`.
+- [x] 2.1 Added `include/engine/scene/tile_layer.hpp`: header-only aggregate per spec.
+- [x] 2.2 Added `tile_set.hpp` + `tile_set.cpp`: row-major SourceRect lookup, MarkSolid/IsSolid with IsSolid(0)=false always, MarkSolid(0)=silent no-op.
+- [x] 2.3 Added `tilemap.hpp` + `tilemap.cpp`: stable-sort AddLayer; Layers() returns span; WorldWidth/Height from max-layer-dims; ForEachVisibleTile with viewport-rect culling + 4-arg overload that filters by sortOrder window (lets game render ground / Y-sort / overhead in three passes with one API). CollidesAABB iterates only tiles touched by the AABB. Used elaborated `class TileSet` in member-function return types to disambiguate from the same-named accessor.
+- [x] 2.4 Added `sweep.hpp` + `sweep.cpp`: per-axis-independent SweepMove function.
+- [x] 2.5 `src/scene/CMakeLists.txt` updated; placeholder.cpp dropped.
 
 ## 3. Tileset Asset Pipeline
 
-- [ ] 3.1 Inspect `games/my_rpg/assets/TimeFantasy_TILES_6.24.17/TILESETS/` at apply time. Pick the closest match for coastal/village/weathered Embercoast feel. Document the chosen file + 2-3 alternates in `main.cpp` as the licensed tileset. Touches: investigation.
-- [ ] 3.2 Add `tools/gen_placeholder_tileset.py`: pure-stdlib PNG generator (re-using the inline PNG-encoder pattern from `tools/gen_iden_placeholder.py`). Emits a 16×80 (1 col × 5 rows) tileset to `games/my_rpg/assets/tiles/placeholder_tileset.png`: row 0 transparent (empty), row 1 grass (green), row 2 path/sand (tan), row 3 stone (gray, solid), row 4 wall (dark gray, solid), row 5 water (blue, solid). Document the IDs (1=grass, 2=path, 3=stone, 4=wall, 5=water) in a comment matching the constants used in main.cpp's map data. Touches: tooling.
-- [ ] 3.3 Run the script. Verify the PNG opens in an image viewer and is < 1 KB. Commit script + output. Touches: assets.
+- [x] 3.1 Inspected `TimeFantasy_TILES_6.24.17/TILESETS/`: candidates are `outside.png` (52×24 tiles — primary), `terrain.png` (39×38), `water.png` (51×55), `world.png` (39×26). All clean 16×16 grids. **Deviation**: M3 ships with the procedural placeholder tileset (deterministic visuals); swapping to specific TimeFantasy tile IDs becomes a Game Director art pass. Documented inline in `main.cpp` near the tileset load.
+- [x] 3.2 Added `tools/gen_placeholder_tileset.py`: pure-stdlib PNG generator, 16×80 (1 col × 5 rows). IDs 1=grass, 2=path, 3=stone, 4=wall, 5=water. Subtle per-pixel noise so tiles read as pixel-art not flat fill.
+- [x] 3.3 Ran the script. Output: 1182 bytes (slightly over the <1KB target — noise inflates the deflate; acceptable). Committed script + PNG.
 
 ## 4. Embercoast Map Data + Game Wire-Up
 
-- [ ] 4.1 In `games/my_rpg/src/main.cpp`, define an ASCII-art helper:
-  ```cpp
-  // 'G' = grass, '.' = path/sand, 'S' = stone, 'W' = wall, '~' = water, ' ' = empty
-  ```
-  …and a `MakeLayerFromAscii(width, height, str, charMap)` helper that converts a multi-line raw-string-literal ASCII map to a `TileLayer`. Touches: `game_my_rpg`.
-- [ ] 4.2 Author the Embercoast map (~40×30 tiles) as two ASCII layers (ground + overhead) in `main.cpp`. Per-tile choices should leave a clear "cliff path" to the north that's bordered by walls (per GameDesign §4 — the road north is gated at M3, opens at M7's Halor interaction). For M3 the cliff path is solid all the way; M7 will toggle it. Touches: `game_my_rpg`.
-- [ ] 4.3 In `onStart`: load the TimeFantasy tileset (with placeholder fallback per design D10); construct TileSet (mark stone/wall/water as solid); construct Tilemap; AddLayer for ground + overhead; assign to PlayerState.tilemap (PlayerState gains a `std::optional<Tilemap> tilemap;` field — or `std::unique_ptr<Tilemap>` so onStart can move-construct it). Touches: `game_my_rpg`.
-- [ ] 4.4 Update `onUpdate`'s movement block: instead of unconditionally applying `position += direction * step`, build the desired `Math::Vec2 displacement`, call `Engine::Scene::SweepMove(player.position, displacement, kPlayerCollisionSize, *player.tilemap)`, and apply the returned (clamped) displacement. The "Iden walks off the screen" no-collision M2.75 behavior becomes "Iden bumps into walls cleanly." Touches: `game_my_rpg`.
-- [ ] 4.5 Update `onRender` to use the tilemap. Order:
-  1. `tilemap.ForEachVisibleTile(viewport, ...)` — but ONLY for layers with `sortOrder < 50` (ground).
-  2. Build the Y-sort drawables vector (player + future entities); sort by `position.y + spriteHeight`; draw.
-  3. `tilemap.ForEachVisibleTile(viewport, ...)` again — but ONLY for layers with `sortOrder >= 50` (overhead).
-  Refactor: pull the layer-range parameter into `ForEachVisibleTile` (overload with `int minSortOrder, int maxSortOrder` filter) so the same call works for both halves without two viewport-rect intersections. Touches: `game_my_rpg` + minor `engine_scene` API addition.
-- [ ] 4.6 Add `kPlayerCollisionSize = {12.0f, 8.0f}` constant near the other game-tuning constants in `main.cpp`. Touches: `game_my_rpg`.
+- [x] 4.1 Added `MakeLayerFromAscii` helper in `main.cpp`; charset W/G/./S/~/A/space.
+- [x] 4.2 Authored Embercoast as 20×12 tiles (smaller than the 40×30 default — sized for one logical-screen-wide M3 demo without needing the M3.5 camera follow first). Ground layer: north wall (cliff path blocked), grass borders, one stone building (4×3 with doorway visual), south sea band. Overhead layer: a 4-tile awning extending south of the building so Iden visibly walks under it.
+- [x] 4.3 onStart loads `assets/tiles/placeholder_tileset.png` (the licensed-tileset swap is the Game Director's polish pass); constructs TileSet with stone/wall/water marked solid; constructs Tilemap; adds ground + overhead layers; spawns Iden on the walkable strip south of the building. PlayerState gained `std::unique_ptr<Tilemap> tilemap;`.
+- [x] 4.4 onUpdate runs movement through `Engine::Scene::SweepMove` against the feet-AABB; falls back to free movement when no tilemap is present (defensive — doesn't happen in practice).
+- [x] 4.5 onRender does the three-pass draw: ground (sortOrder < 50) → Y-sorted mid-layer drawables → overhead (sortOrder ≥ 50). Added the 4-arg `ForEachVisibleTile` overload to `engine_scene` for this.
+- [x] 4.6 `kPlayerCollisionSize = {12.0f, 8.0f}` constant added.
 
 ## 5. game_my_rpg — Link engine_scene
 
-- [ ] 5.1 Add `engine_scene` to `games/my_rpg/CMakeLists.txt` DEPENDS (allowed per §6.3 "game_* → engine_*"). Touches: `game_my_rpg`.
+- [x] 5.1 `engine_scene` added to game_my_rpg DEPENDS.
 
 ## 6. Tests
 
-- [ ] 6.1 Add `tests/scene/CMakeLists.txt` with `starfall_add_test(NAME engine_scene_tests SOURCES tilemap_tests.cpp DEPENDS engine_scene engine_assets SDL3::SDL3 SDL3_image::SDL3_image)`. Include `tests/common/` for the SDL fixture. Touches: tests.
-- [ ] 6.2 Update `tests/CMakeLists.txt` foreach to add `scene`. Touches: tests root.
-- [ ] 6.3 Add `tests/scene/tilemap_tests.cpp`. Use `SdlWindowAndRendererFixture` + `AssetLoader` for any test that needs a real TextureHandle for the TileSet; the rest can use a dummy `TextureHandle{}`. Coverage:
-  - TileSet: SourceRect math for tile 1, tile in second column, tile in second row (3 cases per spec).
-  - TileSet: default IsSolid returns false; MarkSolid + IsSolid round-trip; IsSolid(0) always false; MarkSolid(0) is no-op.
-  - Tilemap: AddLayer sorts by sortOrder (insert overhead first, then ground; Layers() returns ground first).
-  - Tilemap: WorldWidth/Height reflect largest layer.
-  - Tilemap: ForEachVisibleTile — full-map viewport visits every non-empty tile; clipped viewport visits only overlapping cells; empty tiles skipped; hidden layers skipped.
-  - Tilemap: CollidesAABB — true for AABB on solid tile, false for AABB in open space, true for AABB straddling, false when the solid tile is on a hidden layer.
-  - SweepMove: no-obstacle returns full displacement; wall-on-X returns (0, dy); corner pin returns (0,0); slide-along-wall returns (dx, 0).
-  Touches: tests.
+- [x] 6.1 `tests/scene/CMakeLists.txt` added (registers `engine_scene_tests`; no SDL_image dep needed since tests don't load real PNGs).
+- [x] 6.2 `tests/CMakeLists.txt` foreach extended with `scene`.
+- [x] 6.3 `tests/scene/tilemap_tests.cpp` — 22 TEST_CASEs covering the full spec: TileSet SourceRect math (3 cases), MarkSolid/IsSolid (3 cases), Tilemap stable-sort layers, WorldWidth/Height, ForEachVisibleTile full-map / clipped / empty-skip / hidden-layer / order / sortOrder window (6 cases), CollidesAABB four scenarios, SweepMove four scenarios. All tests run without a real renderer using null `TextureHandle{}`.
 
 ## 7. Verification (Both Platforms)
 
-- [ ] 7.1 Windows (VS Dev Shell): full configure + build + `ctest --preset debug-windows`. All previous 36 + new scene tests pass. Touches: end-to-end Windows.
-- [ ] 7.2 Windows runtime smoke: launch `game_my_rpg.exe`. Embercoast ground tiles render. Iden visible at her start position. Walking into a wall stops her cleanly; diagonal into a wall slides along it. Cliff path is visibly blocked. Music still triggers on first movement. Close window → exit 0. Touches: end-to-end Windows runtime.
-- [ ] 7.3 Linux (WSL2 g++-10): same flow with `debug-linux`. Touches: end-to-end Linux.
-- [ ] 7.4 Linux runtime smoke via WSLg: same as 7.2. Touches: end-to-end Linux runtime.
-- [ ] 7.5 Rule audit (`check-deps`): no new module-level edges (engine_scene's deps unchanged; game_my_rpg gains a `→ engine_scene` edge which is `game_* → engine_*` and allowed). Confirm zero §6.3 violations. Touches: rule audit.
-- [ ] 7.6 Visual eye-check: verify multi-layer rendering — confirm an overhead tile (e.g. an awning) renders OVER Iden when she walks under it. (Requires the Embercoast map to have at least one overhead tile positioned where Iden walks under it. Author the map accordingly.) Touches: visual verification.
-- [ ] 7.7 Visual eye-check: collision footprint. Verify Iden's head clears low overhangs (a 1-tile-tall passage works), and her feet collide cleanly with the walls. If collision feels off (too generous or too tight), tune `kPlayerCollisionSize` and re-verify. Touches: feel tuning.
+- [x] 7.1 Windows (VS Dev Shell): build + ctest → **58/58 tests pass** in 4.57s (22 new scene tests + the existing 36). Two test fixes during apply: corner-pin test had entity coords that didn't actually reach the solid walls (fixed coords); slide-along-wall test had an em-dash in the name that broke ctest's name-match regex (renamed to use `-`).
+- [x] 7.2 Windows runtime smoke: `game_my_rpg.exe` launches, logs `Embercoast loaded: 20x12 tiles (world 320x192)`, all assets (12 frames + theme + footstep + tileset) load clean. WM_CLOSE → exit 0. Audible/visible movement-vs-wall checks need attended manual test — same caveat as M2/M2.5/M2.75.
+- [x] 7.3 Linux (WSL2 g++-10): build + ctest 58/58 in 23.71s; runtime smoke clean.
+- [x] 7.4 Linux runtime smoke: same log lines as Windows; clean SIGTERM → exit 0.
+- [x] 7.5 check-deps: engine_scene's deps unchanged (engine_core + engine_math + engine_assets). game_my_rpg gained a direct → engine_scene edge per design (allowed per §6.3). 11 targets, ~27 edges, 0 violations.
+- [ ] 7.6 Visual eye-check for overhead-tile pass-over. **Deferred to user attended-test.** Awning is placed in the map at row 6 cols 7-10 (south of the building) so walking horizontally through that strip should show the awning drawing over Iden's upper body.
+- [ ] 7.7 Visual eye-check for collision footprint feel. **Deferred to user attended-test.** `kPlayerCollisionSize = {12, 8}` is the tuning knob if it feels off.
 
 ## 8. Docs Wrap-Up
 
-- [ ] 8.1 Mark GameDesign §9 M3 row complete: `✅ M3 Tilemap & Collision (YYYY-MM-DD)` with brief summary (multi-layer Embercoast map; per-axis sweep collision; Y-sort entities). M3.25 row stays unchecked. Touches: GameDesign §9.
-- [ ] 8.2 Update CLAUDE.md "Current Status": M3 done; tilemap + collision + Y-sort summary; next target M3.25 Tileset Animation. Move M2.75 into "Previously complete" list. Touches: project root CLAUDE.md.
-- [ ] 8.3 README.md status table: M3 → ✅; bump 🎯 Next to M3.25. Touches: README.
+- [x] 8.1 GameDesign §9 M3 row marked ✅ with date + summary.
+- [x] 8.2 CLAUDE.md "Current Status" rewritten for M3 done; M2.75 → Previously complete; Next target M3.25 Tileset Animation.
+- [x] 8.3 README status table: M3 ✅; M3.25 🎯 Next.
