@@ -22,24 +22,15 @@
 #include <vector>
 
 // ============================================================================
-// Tile-ID picks per TimeFantasy tileset. To iterate, change a single number
-// and rebuild; tools/preview_tilesets.py renders each pick for visual check.
+// Procedural-art Embercoast.
+//
+// M3 ships on the 5-tile procedural placeholder tileset
+// (tools/gen_placeholder_tileset.py).  Licensed TimeFantasy tile art lives
+// on disk but is intentionally not loaded — visual iteration in C++ ASCII
+// masks is the wrong tool for the job.  Real tile art lands after M5
+// (Editor v1) when scenes load from JSON and can be edited visually.
 // ============================================================================
-namespace TerrainTile {                              // terrain.png, 39 cols
-    constexpr int Grass = 1 * 39 +  4 + 1;           // (4,1)   = 44   plain green
-    constexpr int Path  = 4 * 39 +  4 + 1;           // (4,4)   = 161  brown dirt
-    constexpr int Cliff = 14 * 39 +  3 + 1;          // (3,14)  = 550  cliff w/ grass cap
-}
-namespace WaterTile {                                // water.png, 51 cols
-    constexpr int Sea   = 4 * 51 +  2 + 1;           // (2,4)   = 207  plain water frame 0
-}
-namespace HouseTile {                                // house.png, 69 cols
-    constexpr int Wall   = 4 * 69 +  1 + 1;          // (1,4)   = 278  wood-log wall
-    constexpr int Awning = 4 * 69 + 22 + 1;          // (22,4)  = 299  slate roof + beam
-}
-
-// Placeholder fallback IDs (the procedural 5-tile PNG, 1-column layout).
-namespace PlaceholderTile {
+namespace Tile {
     constexpr int Empty = 0;
     constexpr int Grass = 1;
     constexpr int Path  = 2;
@@ -48,116 +39,10 @@ namespace PlaceholderTile {
     constexpr int Water = 5;
 }
 
-// ============================================================================
-// Embercoast — 20x12 hand-authored. Each '.' in a layer means "empty here";
-// the layer only carries its own art (grass layer has grass, water layer has
-// water, etc.). Layers stack with the Y-sort visitor in onRender.
-//
-// Reads (north = top): cliff wall (cliff layer); grass band; building
-// (building layer); awning overhead (awning layer, drawn over player);
-// sea band (water layer).
-// ============================================================================
 constexpr int kEmbercoastWidth  = 20;
 constexpr int kEmbercoastHeight = 12;
 constexpr int kTileSize         = 16;
 
-// Layer 0 — grass everywhere except cliff row + water rows.
-constexpr std::string_view kGrassMask =
-    "...................."   // r0  cliff above (no grass)
-    "GGGGGGGGGGGGGGGGGGGG"   // r1
-    "GGGGGGGGGGGGGGGGGGGG"   // r2
-    "GGGGGGGGGGGGGGGGGGGG"   // r3  grass beneath building footprint
-    "GGGGGGGGGGGGGGGGGGGG"   // r4
-    "GGGGGGGGGGGGGGGGGGGG"   // r5
-    "GGGGGGGGGGGGGGGGGGGG"   // r6
-    "GGGGGGGGGGGGGGGGGGGG"   // r7
-    "GGGGGGGGGGGGGGGGGGGG"   // r8
-    "...................."   // r9  sea
-    "...................."   // r10
-    "...................."; // r11
-
-// Layer 1 — cliff wall north edge (solid).
-constexpr std::string_view kCliffMask =
-    "CCCCCCCCCCCCCCCCCCCC"   // r0
-    "...................."   // r1..r11 empty
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "....................";
-
-// Layer 2 — building walls (solid).
-constexpr std::string_view kBuildingMask =
-    "...................."   // r0
-    "...................."   // r1
-    "...................."   // r2
-    "........BBBB........"   // r3  building north wall
-    "........B..B........"   // r4  building (interior strip; B walls are solid)
-    "........BBBB........"   // r5  building south wall
-    "...................."   // r6  (awning lives on layer 4)
-    "...................."   // r7
-    "...................."   // r8
-    "...................."   // r9
-    "...................."   // r10
-    "...................."; // r11
-
-// Layer 3 — sea band (solid).
-constexpr std::string_view kSeaMask =
-    "...................."   // r0..r8 empty
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "~~~~~~~~~~~~~~~~~~~~"   // r9
-    "~~~~~~~~~~~~~~~~~~~~"   // r10
-    "~~~~~~~~~~~~~~~~~~~~"; // r11
-
-// Layer 4 — overhead awning (drawn after player; player walks under).
-constexpr std::string_view kAwningMask =
-    "...................."   // r0..r5
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "...................."
-    "........AAAA........"   // r6  awning extends south of building
-    "...................."   // r7..r11
-    "...................."
-    "...................."
-    "...................."
-    "....................";
-
-// Build a TileLayer from one mask + a charset-to-tileId map.
-struct CharToId { char c; int id; };
-Engine::Scene::TileLayer MakeLayer(std::string_view name, int sortOrder,
-                                   std::string_view ascii,
-                                   std::initializer_list<CharToId> map) {
-    Engine::Scene::TileLayer layer;
-    layer.name      = std::string{name};
-    layer.width     = kEmbercoastWidth;
-    layer.height    = kEmbercoastHeight;
-    layer.sortOrder = sortOrder;
-    layer.tileIds.reserve(static_cast<std::size_t>(kEmbercoastWidth * kEmbercoastHeight));
-    for (char c : ascii) {
-        int id = 0;
-        for (const auto& [k, v] : map) { if (k == c) { id = v; break; } }
-        layer.tileIds.push_back(id);
-    }
-    return layer;
-}
-
-// ============================================================================
-// Player state
-// ============================================================================
 struct PlayerState {
     Engine::Render::AnimatedSprite sprite;
     Engine::Math::Vec2             position{160.0f - 16.0f, 90.0f};
@@ -222,46 +107,34 @@ Engine::Math::Rect FeetAABB(Engine::Math::Vec2 position, int spriteW, int sprite
     };
 }
 
-// Build a 5-layer Embercoast backed by 3 TimeFantasy tilesets (one tileset
-// per ground/water/house layer). Each call sets up MarkSolid on its own
-// tileset before the layer is added.
-void BuildLicensedEmbercoast(Engine::Scene::Tilemap& tm,
-                             std::shared_ptr<Engine::Scene::TileSet> terrainTs,
-                             std::shared_ptr<Engine::Scene::TileSet> waterTs,
-                             std::shared_ptr<Engine::Scene::TileSet> houseTs) {
-    terrainTs->MarkSolid(TerrainTile::Cliff);
-    waterTs  ->MarkSolid(WaterTile::Sea);
-    houseTs  ->MarkSolid(HouseTile::Wall);
-
-    auto grass = MakeLayer("grass",    0,  kGrassMask,    {{'G', TerrainTile::Grass}});
-    auto cliff = MakeLayer("cliff",    1,  kCliffMask,    {{'C', TerrainTile::Cliff}});
-    auto bldg  = MakeLayer("building", 2,  kBuildingMask, {{'B', HouseTile::Wall}});
-    auto sea   = MakeLayer("sea",      3,  kSeaMask,      {{'~', WaterTile::Sea}});
-    auto awn   = MakeLayer("awning", 100,  kAwningMask,   {{'A', HouseTile::Awning}});
-    grass.tileset = terrainTs;
-    cliff.tileset = terrainTs;
-    bldg .tileset = houseTs;
-    sea  .tileset = waterTs;
-    awn  .tileset = houseTs;
-    tm.AddLayer(std::move(grass));
-    tm.AddLayer(std::move(cliff));
-    tm.AddLayer(std::move(bldg));
-    tm.AddLayer(std::move(sea));
-    tm.AddLayer(std::move(awn));
+struct CharToId { char c; int id; };
+Engine::Scene::TileLayer MakeLayer(std::string_view name, int sortOrder,
+                                   std::string_view ascii,
+                                   std::initializer_list<CharToId> map) {
+    Engine::Scene::TileLayer layer;
+    layer.name      = std::string{name};
+    layer.width     = kEmbercoastWidth;
+    layer.height    = kEmbercoastHeight;
+    layer.sortOrder = sortOrder;
+    layer.tileIds.reserve(static_cast<std::size_t>(kEmbercoastWidth * kEmbercoastHeight));
+    for (char c : ascii) {
+        int id = 0;
+        for (const auto& [k, v] : map) { if (k == c) { id = v; break; } }
+        layer.tileIds.push_back(id);
+    }
+    return layer;
 }
 
-// Public-contributor fallback: a 2-layer Embercoast on the procedural
-// placeholder tileset (5 IDs in a single column). Same map shape, plainer
-// art. Tilemap's shared TileSet handles solidity for both layers.
-void BuildPlaceholderEmbercoast(Engine::Scene::Tilemap& tm,
-                                std::shared_ptr<Engine::Scene::TileSet> placeholder) {
-    placeholder->MarkSolid(PlaceholderTile::Stone);
-    placeholder->MarkSolid(PlaceholderTile::Wall);
-    placeholder->MarkSolid(PlaceholderTile::Water);
-    tm.SetTileSet(placeholder);
+// Build the Embercoast scene on the procedural placeholder tileset.
+// Two layers (ground + overhead).  Solid tiles: Stone, Wall, Water.
+// M5 (Editor v1) will replace this with editor-authored JSON scenes.
+void BuildEmbercoast(Engine::Scene::Tilemap& tm,
+                     std::shared_ptr<Engine::Scene::TileSet> tileset) {
+    tileset->MarkSolid(Tile::Stone);
+    tileset->MarkSolid(Tile::Wall);
+    tileset->MarkSolid(Tile::Water);
+    tm.SetTileSet(tileset);
 
-    // Combine all features into 2 layers (ground + overhead) using the
-    // single placeholder tileset.
     constexpr std::string_view kGround =
         "WWWWWWWWWWWWWWWWWWWW"
         "WGGGGGGGGGGGGGGGGGGW"
@@ -288,12 +161,12 @@ void BuildPlaceholderEmbercoast(Engine::Scene::Tilemap& tm,
         "                    "
         "                    "
         "                    ";
-    tm.AddLayer(MakeLayer("ground",   0, kGround,
-        {{'W', PlaceholderTile::Wall},  {'G', PlaceholderTile::Grass},
-         {'.', PlaceholderTile::Path},  {'S', PlaceholderTile::Stone},
-         {'~', PlaceholderTile::Water}}));
+    tm.AddLayer(MakeLayer("ground", 0, kGround,
+        {{'W', Tile::Wall},  {'G', Tile::Grass},
+         {'.', Tile::Path},  {'S', Tile::Stone},
+         {'~', Tile::Water}}));
     tm.AddLayer(MakeLayer("overhead", 100, kOver,
-        {{'A', PlaceholderTile::Stone}}));
+        {{'A', Tile::Stone}}));
 }
 
 }  // namespace
@@ -312,7 +185,8 @@ int main(int /*argc*/, char** /*argv*/) {
                              Engine::Audio::AudioSystem&   audio) {
             player.audio = &audio;
 
-            // ---- Sprite (M2.5) ----
+            // ---- Sprite (M2.5) — TimeFantasy chara2_1 with placeholder
+            // fallback for public clones without the licensed pack. ----
             static constexpr std::array<const char*, 12> kFramePaths = {
                 "assets/timefantasy_characters/frames/chara/chara2_1/down_stand.png",
                 "assets/timefantasy_characters/frames/chara/chara2_1/down_walk1.png",
@@ -344,7 +218,7 @@ int main(int /*argc*/, char** /*argv*/) {
             }
             player.sprite.Play("idle_down");
 
-            // ---- Audio (M2.75) ----
+            // ---- Audio (M2.75) — licensed HydroGene with procedural fallback. ----
             constexpr const char* kThemeLicensed =
                 "assets/28 High Quality 16-bit RPG Music/ogg/04. Peaceful Village.ogg";
             constexpr const char* kThemePlaceholder = "assets/audio/embercoast_morning.wav";
@@ -360,56 +234,27 @@ int main(int /*argc*/, char** /*argv*/) {
                 player.footstep = s.Value();
             }
 
-            // ---- Tilemap (M3) ----
-            // Prefer the licensed TimeFantasy tilesets (3 PNGs: terrain.png
-            // for ground+cliff, water.png for the sea, house.png for the
-            // building + awning). Fall back to the procedural placeholder
-            // tileset (a single PNG, committed) if any are missing — public
-            // clones still build and run.
-            auto terrainRes = loader.LoadTexture(
-                "assets/TimeFantasy_TILES_6.24.17/TILESETS/terrain.png");
-            auto waterRes   = loader.LoadTexture(
-                "assets/TimeFantasy_TILES_6.24.17/TILESETS/water.png");
-            auto houseRes   = loader.LoadTexture(
-                "assets/TimeFantasy_TILES_6.24.17/TILESETS/house.png");
-            const bool licensedReady =
-                terrainRes.IsOk() && waterRes.IsOk() && houseRes.IsOk();
-
+            // ---- Tilemap (M3) — procedural placeholder only.  Licensed
+            // tile art deferred until M5 (Editor v1). ----
             player.tilemap = std::make_unique<Engine::Scene::Tilemap>(kTileSize, kTileSize);
-
-            if (licensedReady) {
-                auto terrainTs = std::make_shared<Engine::Scene::TileSet>(
-                    terrainRes.Value(), kTileSize, kTileSize, /*columns*/ 39);
-                auto waterTs = std::make_shared<Engine::Scene::TileSet>(
-                    waterRes.Value(),   kTileSize, kTileSize, /*columns*/ 51);
-                auto houseTs = std::make_shared<Engine::Scene::TileSet>(
-                    houseRes.Value(),   kTileSize, kTileSize, /*columns*/ 69);
-                BuildLicensedEmbercoast(*player.tilemap, terrainTs, waterTs, houseTs);
+            auto placeholderTex = loader.LoadTexture("assets/tiles/placeholder_tileset.png");
+            if (placeholderTex.IsErr()) {
+                SF_LOG_ERROR("Game",
+                    "Placeholder tileset failed to load — Iden will walk on a blank scene.");
+                player.tilemap.reset();
+            } else {
+                auto tileset = std::make_shared<Engine::Scene::TileSet>(
+                    placeholderTex.Value(), kTileSize, kTileSize, /*columns*/ 1);
+                BuildEmbercoast(*player.tilemap, tileset);
                 SF_LOG_INFO("Game",
-                    "Embercoast loaded: %dx%d tiles (world %dx%d), TimeFantasy art",
+                    "Embercoast loaded: %dx%d tiles (world %dx%d), procedural art",
                     kEmbercoastWidth, kEmbercoastHeight,
                     player.tilemap->WorldWidth(), player.tilemap->WorldHeight());
-            } else {
-                SF_LOG_WARN("Game",
-                    "TimeFantasy tilesets not available, falling back to placeholder. "
-                    "(IGNORE this warning if you haven't licensed the TimeFantasy pack.)");
-                auto placeholderTex = loader.LoadTexture("assets/tiles/placeholder_tileset.png");
-                if (placeholderTex.IsErr()) {
-                    SF_LOG_ERROR("Game",
-                        "Placeholder tileset failed too — Iden will walk on a blank scene.");
-                    player.tilemap.reset();
-                } else {
-                    auto placeholder = std::make_shared<Engine::Scene::TileSet>(
-                        placeholderTex.Value(), kTileSize, kTileSize, /*columns*/ 1);
-                    BuildPlaceholderEmbercoast(*player.tilemap, placeholder);
-                    SF_LOG_INFO("Game",
-                        "Embercoast loaded: %dx%d tiles (world %dx%d), placeholder art",
-                        kEmbercoastWidth, kEmbercoastHeight,
-                        player.tilemap->WorldWidth(), player.tilemap->WorldHeight());
-                }
             }
 
-            // Spawn Iden on the walkable strip south of the building (row 7).
+            // Spawn Iden on the grass south of the inn block (rows 3-5
+            // cols 8-11), in the open area between the building and the
+            // sea band.
             if (player.tilemap) {
                 if (auto frame = player.sprite.CurrentFrame()) {
                     const float w = static_cast<float>(frame->Width());
