@@ -70,19 +70,22 @@ This project uses OpenSpec (`/openspec`) for change proposals and specs. When pr
 
 ## Current Status
 
-**M2.75 Audio: complete on Windows and Linux (2026-06-18).** `engine_audio` graduates from placeholder to a working module: `Engine::Audio::AudioSystem` owns a `MIX_Mixer` + one dedicated music track + 16 SFX tracks via SDL3_mixer 3.2.4 (a full API rewrite from SDL2_mixer — `MIX_Mixer/MIX_Track/MIX_Audio` model). `Engine::Audio::Music` / `Engine::Audio::Sound` are `shared_ptr` handle wrappers around `MIX_Audio*`. Volume API: master/music/sfx 0..1 floats applied via `MIX_SetTrackGain`. Init failure degrades silently to no-op mode. `Application::onStart` signature grew a third `AudioSystem&` arg. Game-side: silence at boot, `PlayMusic(fadeIn=2s)` on first movement (proxy for "Iden walks outside her door" until M3 lands real regions), `PlaySound(footstep)` every 16 logical px of travel (~2/sec, matching the M2.5 walk cycle). Theme is the licensed HydroGene "Peaceful Village" track with the procedural WAV placeholder as the public-contributor fallback.
+**M3 Tilemap & Collision: complete on Windows and Linux (2026-06-19).** `engine_scene` graduates from placeholder to the multi-layer tilemap module. `Engine::Scene::TileLayer` (data), `Engine::Scene::TileSet` (texture + tile dims + columns + MarkSolid/IsSolid), `Engine::Scene::Tilemap` (stable-sorted layers + `ForEachVisibleTile` visitor + `CollidesAABB`) all land. `Engine::Scene::SweepMove` does per-axis-independent AABB sweeps for the "slide along walls" feel. Engine_render stays tilemap-agnostic per §6.3 — the game's `onRender` does a three-pass draw (ground → Y-sorted mid-layer entities → overhead) using `ForEachVisibleTile`'s sortOrder-window overload. Game side: 20×12 Embercoast map authored as ASCII-art in `main.cpp` (cliff path blocked north, building with awning south-of-which Iden walks under, sea south). Iden's collision is a 12×8 feet AABB (head clears doorways — JRPG convention). game_my_rpg gains a direct `→ engine_scene` link (allowed per §6.3 game_*→engine_*).
 
-**Apply-time deviations**: SDL3 bumped 3.2.16 → 3.4.10 + SDL3_image 3.2.4 → 3.4.4 (ABI alignment with SDL3_mixer 3.2.4). `SDL_X11_XTEST=OFF` added to skip a Linux dep we don't need. Brittle M1-backfill test (`AssetLoader: handle drops free the texture`) rewritten to assert the cache contract via `weak_ptr.expired()` rather than `SDL_Texture*` identity (SDL3 3.4.x's allocator reuses memory addresses).
+**Roadmap audit ride-along**: scope expanded for M3 (multi-layer + Y-sort folded in; tile-trigger zones folded into M7 instead). New **M3.25 Tileset Animation** stub inserted between M3 and M3.5 in DesignDoc §22 + GameDesign §9 + README.
 
-**Test count: 36** (10 new AudioSystem tests on top of M2.5's 26). Run with `ctest --preset debug-<platform>`.
+**Tileset deviation**: M3 ships with the procedural placeholder tileset (5 colored solid tiles) for deterministic visuals. The licensed TimeFantasy `outside.png` (52×24 tiles) is available locally — swap is a Game-Director art pass that picks specific tile IDs.
+
+**Test count: 58** (22 new scene tests on top of M2.75's 36). Run with `ctest --preset debug-<platform>`.
 
 **Previously complete**:
-- **M2.5 Sprite Animation (2026-06-18)** — `AnimatedSprite` named-clip state machine in `engine_render`; Iden's 4-directional walk cycle + idle frames via 12 TimeFantasy frames; `[walk1, stand, walk2, stand]` 8 fps.
-- **M2 Input & Movement (2026-06-18)** — `ActionMap` + `InputState` + `onUpdate` callback; 4-dir movement at 60 logical px/sec; Catch2/CTest adopted.
+- **M2.75 Audio (2026-06-18)** — `AudioSystem` + `Music`/`Sound` handles via SDL3_mixer 3.2.4; licensed HydroGene "Peaceful Village" theme + procedural-WAV fallback; PlayMusic-on-first-movement + footstep-every-16px.
+- **M2.5 Sprite Animation (2026-06-18)** — `AnimatedSprite` named-clip state machine; 4-directional walk cycle.
+- **M2 Input & Movement (2026-06-18)** — `ActionMap` + `InputState` + `onUpdate` callback; 4-dir movement; Catch2/CTest adopted.
 - **M1 Sprite Rendering (2026-06-17)** — `texture-assets` + `2d-renderer` capabilities; Iden visible on pre-dawn blue.
-- **M0 Bootstrap (2026-06-17)** — CMake graph + module dependency enforcement; SDL3 window via `game_my_rpg → engine_runtime`.
+- **M0 Bootstrap (2026-06-17)** — CMake graph + module dependency enforcement; SDL3 window.
 
-**Next milestone target: M3 Tilemap & Collision** (per `docs/GameDesign.md` §9). Goal: Embercoast traversable on a hand-coded map; cliff path blocked. M3.5 Camera Follow follows immediately after.
+**Next milestone target: M3.25 Tileset Animation** (per `docs/GameDesign.md` §9). Goal: ocean tiles lap, lanterns flicker at Embercoast — per-tile animation clips re-using the M2.5 `AnimationClip` shape.
 
 **Roadmap shape**: M0–M10 ships the v1 slice (Embercoast playable). **Phase 2** (M11–M16: UI Framework, Pause + Settings, Map Transitions, Asset Packer, Accessibility, Particles) covers ship-polish work every shipping game needs. **Phase 3** (M17–M22: Inventory, Combat shell + AI, Party, Quests, Cutscenes) covers Acts 2–3 systems that any future 2D RPG on the engine will reuse. Full breakdown in `docs/DesignDoc.md` §22.A.
 

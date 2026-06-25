@@ -25,6 +25,7 @@ The two are bound by the **milestone contract** in `DesignDoc.md` §30: every en
 | M2.5 Sprite Animation      | Directional sprite + walk cycle.            | ✅ Done 2026-06-18 |
 | M2.75 Audio                | Music + SFX. Opening silence, then theme.   | ✅ Done 2026-06-18 |
 | M3  Tilemap & Collision    | Embercoast traversable. Cliff path blocked. | 🎯 Next |
+| M3.25 Tileset Animation    | Ocean tiles lap, lanterns flicker.          | ⏳ |
 | M3.5 Camera Follow         | Camera tracks Iden, clamps to map bounds.   | ⏳ |
 | M4  Scene File Format      | `embercoast.scene.json` loadable.           | ⏳ |
 | M5  Editor v1              | Room rearrangeable in editor without code.  | ⏳ |
